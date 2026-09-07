@@ -1,0 +1,51 @@
+{
+  "name": "dsh-session-navigator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DeepSeek Harness 跨会话深层直达与多窗口导航插件：支持从链接/卡片直达指定会话与轮次（新窗口打开并自动滚动高亮），增强侧边栏搜索框支持 Session ID 穿透匹配与一键弹出新窗口。",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "README.zh.md",
+    "LICENSE",
+    "skill"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JackAIStudio/dsh-session-navigator.git"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-session"
+      ],
+      "platform": "web"
+    }
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "session",
+    "deeplink",
+    "navigator"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  }
+}
