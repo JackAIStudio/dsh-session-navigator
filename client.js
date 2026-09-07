@@ -168,7 +168,6 @@ window.__ModuleLoader__.load({
       document.head.appendChild(style);
     }
 
-    // 在新独立窗口中打开指定路径，始终同源以复用登录凭证
     function openInNewWindow(targetPath) {
       if (typeof window === 'undefined') return;
       const origin = window.location.origin;
@@ -184,10 +183,8 @@ window.__ModuleLoader__.load({
         }
       }
 
-      // 使用标准 _blank 打开新窗口，绝不添加引发拦截的复杂限制特性
       const newWin = window.open(fullUrl, '_blank');
       if (!newWin) {
-        // 如果被浏览器弹窗策略阻拦，回退到普通标签
         window.location.href = fullUrl;
       }
     }
@@ -255,45 +252,45 @@ window.__ModuleLoader__.load({
 
       if (!targetSessionId) return;
 
-      // 使用 Cordis 标准动态注入获取 sessions 或 workspaces，绝不直接读 ctx.workspaces
+      // 使用官方标准的 sessions.open(sessionId) 切换会话
       let switched = false;
-      if (typeof ctx?.inject === 'function') {
-        ctx.inject(['workspaces'], (sub) => {
-          if (switched) return;
-          if (typeof sub.workspaces?.selectSession === 'function') {
-            sub.workspaces.selectSession(targetSessionId);
+      const openSession = () => {
+        if (switched) return;
+        try {
+          if (typeof ctx.sessions?.open === 'function') {
+            ctx.sessions.open(targetSessionId);
             switched = true;
           }
-        });
-        ctx.inject(['sessions'], (sub) => {
-          if (switched) return;
-          if (typeof sub.sessions?.select === 'function') {
-            try {
-              sub.sessions.select(targetSessionId);
-              switched = true;
-            } catch {}
-          }
-        });
+        } catch (e) {
+          console.warn('[dsh-session-navigator] sessions.open error:', e);
+        }
+      };
+
+      openSession();
+      if (!switched) {
+        setTimeout(openSession, 200);
+        setTimeout(openSession, 600);
+        setTimeout(openSession, 1200);
       }
 
-      // 如果需要定位到具体轮次，等待消息 DOM 出现后平滑滚动并高亮
+      // 如果指定了目标轮次，等待消息 DOM 出现后平滑滚动并高亮
       if (targetTurn || targetSeq) {
         let attempts = 0;
-        const maxAttempts = 30;
+        const maxAttempts = 40;
         const timer = setInterval(() => {
           attempts++;
           const located = locateAndHighlightTurn(targetTurn, targetSeq);
           if (located || attempts >= maxAttempts) {
             clearInterval(timer);
           }
-        }, 250);
+        }, 200);
       }
     }
 
     function locateAndHighlightTurn(targetTurn, targetSeq) {
       if (typeof document === 'undefined') return false;
 
-      // 寻找轮次节点
+      // 方式 1：寻找轮次节点
       const turnElements = document.querySelectorAll(
         '[data-turn-index], [data-turn], [data-seq], article, [role="article"], .message-group'
       );
@@ -306,7 +303,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      // 联动高亮 Codex Timeline
+      // 方式 2：联动高亮 Codex Timeline
       const timelineTicks = document.querySelectorAll('.codex-timeline-tick, [data-timeline-turn]');
       if (timelineTicks.length >= targetTurn && targetTurn > 0) {
         const tick = timelineTicks[targetTurn - 1];
@@ -319,8 +316,8 @@ window.__ModuleLoader__.load({
       return false;
     }
 
-    // 4. 侧边栏搜索框增强：只要输入 >= 2 个字符，自动调后端并在下方渲染匹配浮层
-    function enhanceSearchUI() {
+    // 4. 侧边栏搜索框增强
+    function enhanceSearchUI(ctx) {
       if (typeof document === 'undefined') return;
 
       let fetchTimer = null;
@@ -334,18 +331,17 @@ window.__ModuleLoader__.load({
         const val = target.value.trim();
         clearTimeout(fetchTimer);
 
-        // 只要输入 2 个字符以上（例如 56 或 56c 或 56c6），立即触发检索
+        // 只要输入 >= 2 字符，立即调后端查匹配项
         if (!val || val.length < 2) {
           removeSearchEnhancerBox();
           return;
         }
 
         fetchTimer = setTimeout(async () => {
-          await renderSearchEnhancerResults(val, target);
+          await renderSearchEnhancerResults(val, target, ctx);
         }, 150);
       }, true);
 
-      // DOM 变化监听：自动胶囊化
       const observer = new MutationObserver(() => {
         decorateCapsules();
       });
@@ -357,7 +353,7 @@ window.__ModuleLoader__.load({
       if (el) el.remove();
     }
 
-    async function renderSearchEnhancerResults(query, inputElement) {
+    async function renderSearchEnhancerResults(query, inputElement, ctx) {
       try {
         const res = await fetch(`/dsh-session-navigator/search?q=${encodeURIComponent(query)}&limit=10`);
         if (!res.ok) return;
@@ -414,7 +410,7 @@ window.__ModuleLoader__.load({
             <button class="dsh-open-window-btn" title="在新独立窗口中打开此会话">↗</button>
           `;
 
-          // 点击整行：在当前窗口切换
+          // 点击整行：调用官方 sessions.open(id) 在当前窗口打开！
           row.addEventListener('click', (e) => {
             const btn = e.target.closest('.dsh-open-window-btn');
             if (btn) {
@@ -422,7 +418,16 @@ window.__ModuleLoader__.load({
               e.stopPropagation();
               openInNewWindow(`/?session=${item.id}`);
             } else {
-              window.location.href = `/?session=${item.id}`;
+              try {
+                if (typeof ctx.sessions?.open === 'function') {
+                  ctx.sessions.open(item.id);
+                  removeSearchEnhancerBox();
+                } else {
+                  window.location.href = `/?session=${item.id}`;
+                }
+              } catch {
+                window.location.href = `/?session=${item.id}`;
+              }
             }
           });
 
@@ -436,7 +441,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       injectStyles();
       setupLinkInterceptor();
-      enhanceSearchUI();
+      enhanceSearchUI(ctx);
       handleDeepLinkStartup(ctx);
 
       return () => {
@@ -446,8 +451,8 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // 声明为安全的空注入，依靠动态 ctx.inject 保证绝不报错
-    const inject = [];
+    // 声明正确的 Cordis 注入服务
+    const inject = ['sessions'];
 
     module.exports.apply = apply;
     module.exports.inject = inject;

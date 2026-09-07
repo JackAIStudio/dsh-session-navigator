@@ -28,7 +28,9 @@
       "patch": "./cordis.patch.yml"
     },
     "client": {
-      "inject": [],
+      "inject": [
+        "@deepseek-ai/dsh-api-session-controller"
+      ],
       "platform": "web"
     }
   },
