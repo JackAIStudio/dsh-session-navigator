@@ -6,48 +6,48 @@ window.__ModuleLoader__.load({
     const CSS_STYLES = `
       /* 会话与轮次深层直达胶囊 */
       .dsh-session-anchor-capsule {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 3px 9px;
-        margin: 2px 4px;
-        font-size: 12px;
-        font-weight: 500;
-        line-height: 1.4;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 3px 10px !important;
+        margin: 2px 4px !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        line-height: 1.4 !important;
         color: #2563eb !important;
-        background: rgba(37, 99, 235, 0.08);
-        border: 1px solid rgba(37, 99, 235, 0.25);
-        border-radius: 14px;
+        background: rgba(37, 99, 235, 0.08) !important;
+        border: 1px solid rgba(37, 99, 235, 0.28) !important;
+        border-radius: 16px !important;
         text-decoration: none !important;
-        cursor: pointer;
-        transition: all 0.15s ease-in-out;
-        vertical-align: baseline;
+        cursor: pointer !important;
+        transition: all 0.15s ease-in-out !important;
+        vertical-align: baseline !important;
       }
       .dsh-session-anchor-capsule:hover {
-        background: rgba(37, 99, 235, 0.16);
-        border-color: rgba(37, 99, 235, 0.45);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+        background: rgba(37, 99, 235, 0.16) !important;
+        border-color: rgba(37, 99, 235, 0.5) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18) !important;
       }
       .dsh-session-anchor-capsule .dsh-capsule-icon {
-        font-size: 13px;
-        line-height: 1;
+        font-size: 13px !important;
+        line-height: 1 !important;
       }
       .dsh-session-anchor-capsule .dsh-capsule-arrow {
-        font-size: 11px;
-        opacity: 0.7;
-        margin-left: 1px;
+        font-size: 11px !important;
+        opacity: 0.75 !important;
+        margin-left: 2px !important;
       }
 
-      /* 目标轮次高亮动画 */
+      /* 目标轮次高亮脉冲动画 */
       @keyframes dshTurnPulse {
         0% {
-          outline: 3px solid rgba(59, 130, 246, 0.8);
-          background-color: rgba(59, 130, 246, 0.12);
+          outline: 3px solid rgba(59, 130, 246, 0.9);
+          background-color: rgba(59, 130, 246, 0.15);
         }
         70% {
           outline: 3px solid rgba(59, 130, 246, 0.4);
-          background-color: rgba(59, 130, 246, 0.06);
+          background-color: rgba(59, 130, 246, 0.08);
         }
         100% {
           outline: 3px solid transparent;
@@ -55,75 +55,105 @@ window.__ModuleLoader__.load({
         }
       }
       .dsh-navigator-highlight {
-        animation: dshTurnPulse 2.5s ease-out forwards;
+        animation: dshTurnPulse 2.5s ease-out forwards !important;
+        border-radius: 8px !important;
+      }
+
+      /* 搜索浮层与结果列表容器 */
+      .dsh-search-enhancer-box {
+        margin: 6px 8px;
+        padding: 6px;
         border-radius: 8px;
+        background: var(--bg-surface, rgba(255, 255, 255, 0.04));
+        border: 1px dashed var(--border-control, rgba(128, 128, 128, 0.25));
       }
-
-      /* 搜索结果项右侧新窗口打开按钮 */
-      .dsh-open-window-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 22px;
-        height: 22px;
-        margin-left: auto;
-        padding: 0;
-        border: none;
-        border-radius: 4px;
-        background: transparent;
+      .dsh-search-enhancer-header {
+        font-size: 11px;
+        font-weight: 600;
         color: var(--text-muted, #888);
-        cursor: pointer;
-        opacity: 0;
-        transition: all 0.15s ease;
-        flex-shrink: 0;
-      }
-      [role="treeitem"]:hover .dsh-open-window-btn,
-      .dsh-search-custom-row:hover .dsh-open-window-btn {
-        opacity: 0.85;
-      }
-      .dsh-open-window-btn:hover {
-        opacity: 1 !important;
-        background: rgba(128, 128, 128, 0.15);
-        color: var(--text-title, #111);
-      }
-
-      /* 自定义补全搜索项样式 */
-      .dsh-search-custom-row {
+        padding: 2px 6px 4px;
         display: flex;
         align-items: center;
+        justify-content: space-between;
+      }
+      .dsh-search-enhancer-list {
+        display: grid;
+        gap: 4px;
+        max-height: 280px;
+        overflow-y: auto;
+      }
+      .dsh-search-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
         gap: 8px;
-        width: 100%;
-        padding: 6px 10px;
-        border: none;
+        padding: 6px 8px;
         border-radius: 6px;
         background: transparent;
-        text-align: left;
+        border: none;
         cursor: pointer;
-        transition: background 0.1s ease;
+        text-align: left;
+        transition: background 0.12s ease;
       }
-      .dsh-search-custom-row:hover {
-        background: var(--bg-hover, rgba(128, 128, 128, 0.08));
+      .dsh-search-item-row:hover {
+        background: var(--bg-hover, rgba(128, 128, 128, 0.1));
       }
-      .dsh-search-custom-meta {
+      .dsh-search-item-meta {
         display: grid;
         gap: 2px;
         min-width: 0;
         flex: 1;
       }
-      .dsh-search-custom-title {
-        font-size: 13px;
+      .dsh-search-item-title {
+        font-size: 12px;
         font-weight: 500;
         color: var(--text-title, #222);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
-      .dsh-search-custom-sub {
+      .dsh-search-item-snippet {
         font-size: 11px;
         color: var(--text-muted, #777);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+      .dsh-search-item-badge {
+        font-size: 10px;
+        padding: 1px 4px;
+        border-radius: 4px;
+        background: rgba(37, 99, 235, 0.1);
+        color: #2563eb;
+        display: inline-block;
+        margin-right: 4px;
+      }
+
+      /* 独立小弹窗打开按钮 */
+      .dsh-open-window-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--text-muted, #888);
+        cursor: pointer;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+        font-size: 14px;
+      }
+      .dsh-search-item-row:hover .dsh-open-window-btn,
+      [role="treeitem"]:hover .dsh-open-window-btn {
+        color: #2563eb;
+      }
+      .dsh-open-window-btn:hover {
+        background: rgba(37, 99, 235, 0.15) !important;
+        color: #2563eb !important;
+        transform: scale(1.1);
       }
     `;
 
@@ -135,21 +165,33 @@ window.__ModuleLoader__.load({
       document.head.appendChild(style);
     }
 
-    function openInNewWindow(url) {
+    // 在新窗口打开，确保使用当前相同的 window.location.origin
+    function openInNewWindow(targetPath) {
+      const origin = window.location.origin;
+      let fullUrl = targetPath;
+      if (targetPath.startsWith('/')) {
+        fullUrl = `${origin}${targetPath}`;
+      } else if (targetPath.startsWith('http://') || targetPath.startsWith('https://')) {
+        // 如果是绝对路径，强制替换为当前 origin，保证 Cookie 绝对可用且不跨域
+        const u = new URL(targetPath);
+        fullUrl = `${origin}${u.pathname}${u.search}${u.hash}`;
+      }
+
       const screenW = window.screen.availWidth || 1440;
       const screenH = window.screen.availHeight || 900;
       const width = Math.min(1280, Math.floor(screenW * 0.85));
       const height = Math.min(880, Math.floor(screenH * 0.85));
       const left = Math.max(30, Math.floor((screenW - width) / 2));
       const top = Math.max(30, Math.floor((screenH - height) / 2));
+
       window.open(
-        url,
+        fullUrl,
         '_blank',
         `popup=true,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
       );
     }
 
-    // 1. 全局链接拦截：带 session 参数的链接在新窗口打开
+    // 1. 全局链接拦截：彻底解决跳外部浏览器及 401 报错
     function setupLinkInterceptor() {
       document.addEventListener('click', (e) => {
         const target = e.target;
@@ -158,6 +200,7 @@ window.__ModuleLoader__.load({
         if (!link) return;
 
         const href = link.getAttribute('href') || '';
+        // 匹配任意指向 session 的链接
         if (
           href.includes('session=') ||
           href.startsWith('dsh://session') ||
@@ -166,19 +209,23 @@ window.__ModuleLoader__.load({
           e.preventDefault();
           e.stopPropagation();
 
-          let targetUrl = href;
+          let queryPath = href;
           if (href.startsWith('dsh://session/')) {
             const raw = href.replace('dsh://session/', '');
-            targetUrl = `/?session=${raw}`;
-          } else if (!href.startsWith('http') && !href.startsWith('/')) {
-            targetUrl = `/?${href}`;
+            queryPath = `/?session=${raw}`;
+          } else if (href.startsWith('http://') || href.startsWith('https://')) {
+            const u = new URL(href);
+            queryPath = `${u.pathname}${u.search}`;
+          } else if (!href.startsWith('/')) {
+            queryPath = `/${href}`;
           }
-          openInNewWindow(targetUrl);
+
+          openInNewWindow(queryPath);
         }
       }, true);
     }
 
-    // 2. 将消息中的 session 链接装饰为直达胶囊
+    // 2. 自动把消息里的 session 链接美化为胶囊
     function decorateCapsules() {
       const links = document.querySelectorAll('a[href*="session="]:not(.dsh-session-anchor-capsule)');
       for (const a of links) {
@@ -186,11 +233,11 @@ window.__ModuleLoader__.load({
         const text = a.textContent.trim();
         const hasArrow = text.includes('↗');
         a.innerHTML = `<span class="dsh-capsule-icon">🧭</span><span>${text}</span>${hasArrow ? '' : '<span class="dsh-capsule-arrow">↗</span>'}`;
-        a.setAttribute('title', '在新独立窗口中打开并直达指定轮次');
+        a.setAttribute('title', '在独立新窗口中打开并直达指定轮次');
       }
     }
 
-    // 3. 自动寻址与跳转：检测当前窗口 URL 是否带 session / turn 参数
+    // 3. 启动时的深层链接自寻址（自动选会话 + 滚到目标轮次）
     function handleDeepLinkStartup(ctx) {
       const search = window.location.search;
       if (!search || !search.includes('session=')) return;
@@ -202,66 +249,51 @@ window.__ModuleLoader__.load({
 
       if (!targetSessionId) return;
 
-      // 切换会话
       let switched = false;
-      const trySwitch = () => {
+      const selectSession = () => {
         if (switched) return;
-        if (ctx.uiWorkspace && typeof ctx.uiWorkspace.selectSession === 'function') {
-          ctx.uiWorkspace.selectSession(targetSessionId);
-          switched = true;
-        } else if (ctx.workspaces && typeof ctx.workspaces.selectSession === 'function') {
+        if (ctx?.workspaces && typeof ctx.workspaces.selectSession === 'function') {
           ctx.workspaces.selectSession(targetSessionId);
           switched = true;
+        } else if (ctx?.sessions && typeof ctx.sessions.select === 'function') {
+          try { ctx.sessions.select(targetSessionId); switched = true; } catch {}
         }
       };
-      trySwitch();
+
+      selectSession();
       if (!switched) {
-        setTimeout(trySwitch, 200);
-        setTimeout(trySwitch, 600);
+        setTimeout(selectSession, 200);
+        setTimeout(selectSession, 600);
       }
 
-      // 如果有指定目标轮次，在 DOM 渲染后自动平滑滚动并高亮
       if (targetTurn || targetSeq) {
         let attempts = 0;
         const maxAttempts = 30;
-        const locateTimer = setInterval(() => {
+        const timer = setInterval(() => {
           attempts++;
-          const found = locateAndHighlightTurn(targetTurn, targetSeq);
-          if (found || attempts >= maxAttempts) {
-            clearInterval(locateTimer);
+          const located = locateAndHighlightTurn(targetTurn, targetSeq);
+          if (located || attempts >= maxAttempts) {
+            clearInterval(timer);
           }
-        }, 200);
+        }, 250);
       }
     }
 
     function locateAndHighlightTurn(targetTurn, targetSeq) {
-      // 策略 A：按会话消息容器寻找（寻找用户提问节点）
-      // DSH 消息区通常有 role="article" 或特定轮次容器
-      const turnCards = document.querySelectorAll(
-        '[data-turn-index], [data-turn], [data-seq], .conversation-turn, .chat-turn'
+      // 方式 1：寻找文章/轮次容器
+      const turnElements = document.querySelectorAll(
+        '[data-turn-index], [data-turn], [data-seq], article, [role="article"], .message-group'
       );
-      if (turnCards.length > 0 && targetTurn) {
-        const targetElement = turnCards[targetTurn - 1];
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          targetElement.classList.add('dsh-navigator-highlight');
+      if (turnElements.length >= targetTurn && targetTurn > 0) {
+        const target = turnElements[targetTurn - 1];
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          target.classList.add('dsh-navigator-highlight');
           return true;
         }
       }
 
-      // 策略 B：查找包含“第 N 轮”或用户消息块的序列
-      // 遍历所有可能的轮次卡片
-      const allArticles = document.querySelectorAll('article, [role="article"], .message-group');
-      if (allArticles.length >= targetTurn && targetTurn > 0) {
-        const targetElement = allArticles[targetTurn - 1];
-        if (targetElement) {
-          targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          targetElement.classList.add('dsh-navigator-highlight');
-          return true;
-        }
-      }
-
-      // 策略 C：如果安装了 dsh-codex-timeline，联动触发其横线点击
+      // 方式 2：联动触发 Codex Timeline 的短横线
       const timelineTicks = document.querySelectorAll('.codex-timeline-tick, [data-timeline-turn]');
       if (timelineTicks.length >= targetTurn && targetTurn > 0) {
         const tick = timelineTicks[targetTurn - 1];
@@ -274,134 +306,147 @@ window.__ModuleLoader__.load({
       return false;
     }
 
-    // 4. 左侧搜索框增强：搜 Session ID + 搜索结果添加 [ ↗ ] 按钮
+    // 4. 左侧搜索框增强：监听输入，如果官方报“无匹配”，无缝注入真实匹配结果
     function enhanceSearchUI() {
-      // 观察搜索结果树变化
-      const observer = new MutationObserver(() => {
-        // 查找所有搜索结果项
-        const resultItems = document.querySelectorAll('[role="treeitem"]:not([data-dsh-nav-enhanced])');
-        for (const item of resultItems) {
-          item.setAttribute('data-dsh-nav-enhanced', 'true');
+      let activeQuery = '';
+      let fetchTimer = null;
 
-          // 从 item 或子元素中提取 sessionId
-          const sessionId = item.getAttribute('data-session-id') ||
-            item.getAttribute('id') ||
-            item.getAttribute('key');
-
-          // 创建并在右侧插入 [ ↗ ] 按钮
-          const openBtn = document.createElement('button');
-          openBtn.className = 'dsh-open-window-btn';
-          openBtn.title = '在新窗口打开此会话';
-          openBtn.innerHTML = '↗';
-          openBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-
-            // 如果有精确 ID 直接打开，否则从行点击事件或上下文解析
-            let targetId = sessionId;
-            if (!targetId) {
-              const text = item.textContent || '';
-              const match = text.match(/session-[0-9a-f-]{8,}/);
-              if (match) targetId = match[0];
-            }
-
-            if (targetId) {
-              openInNewWindow(`/?session=${targetId}`);
-            } else {
-              // 模拟普通打开以探测 ID
-              item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
-          });
-
-          item.appendChild(openBtn);
-        }
-
-        // 装饰消息区里的胶囊链接
-        decorateCapsules();
-      });
-
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      // 监听搜索框输入，增强 Session ID 检索
-      setupSearchInputListener();
-    }
-
-    function setupSearchInputListener() {
-      let debounceTimer = null;
       document.addEventListener('input', (e) => {
         const target = e.target;
         if (!(target instanceof HTMLInputElement)) return;
-        const placeholder = target.getAttribute('placeholder') || '';
-        if (!placeholder.includes('搜索') && !placeholder.includes('Search')) return;
+        const placeholder = (target.getAttribute('placeholder') || '').toLowerCase();
+        if (!placeholder.includes('搜索') && !placeholder.includes('search')) return;
 
         const val = target.value.trim();
-        if (!val) return;
+        activeQuery = val;
+        clearTimeout(fetchTimer);
 
-        clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(() => {
-          // 如果用户输入了可能是 Session ID 或特殊关键词
-          if (val.length >= 3) {
-            handleCustomSearchFallback(val);
-          }
-        }, 200);
+        if (!val || val.length < 2) {
+          removeSearchEnhancerBox();
+          return;
+        }
+
+        fetchTimer = setTimeout(async () => {
+          await renderSearchEnhancerResults(val, target);
+        }, 180);
       }, true);
+
+      // 给原生的所有树节点也注入 [ ↗ ] 按钮
+      const observer = new MutationObserver(() => {
+        decorateCapsules();
+
+        const treeItems = document.querySelectorAll('[role="treeitem"]:not([data-dsh-open-ready])');
+        for (const item of treeItems) {
+          item.setAttribute('data-dsh-open-ready', 'true');
+          const btn = document.createElement('button');
+          btn.className = 'dsh-open-window-btn';
+          btn.title = '在新窗口中打开此会话';
+          btn.innerHTML = '↗';
+          btn.addEventListener('click', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const sid = item.getAttribute('data-session-id') ||
+                        item.getAttribute('id') ||
+                        item.getAttribute('key');
+            if (sid && sid.startsWith('session-')) {
+              openInNewWindow(`/?session=${sid}`);
+            } else {
+              const text = item.textContent || '';
+              const match = text.match(/session-[0-9a-f-]{8,}/);
+              if (match) {
+                openInNewWindow(`/?session=${match[0]}`);
+              } else {
+                item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              }
+            }
+          });
+          item.appendChild(btn);
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
     }
 
-    async function handleCustomSearchFallback(query) {
-      // 检查当前官方搜索是否提示无匹配
-      const emptyMsg = document.querySelector('[class*="empty"], [class*="noMatches"]');
-      if (!emptyMsg && !query.startsWith('session-') && query.length < 5) return;
+    function removeSearchEnhancerBox() {
+      const el = document.getElementById('dsh-search-enhancer');
+      if (el) el.remove();
+    }
 
+    async function renderSearchEnhancerResults(query, inputElement) {
       try {
         const res = await fetch(`/dsh-session-navigator/search?q=${encodeURIComponent(query)}&limit=10`);
         if (!res.ok) return;
         const data = await res.json();
-        if (!data || !data.ok || !data.items || data.items.length === 0) return;
-
-        // 如果搜索树存在，在空提示处追加补充搜索结果
-        const listContainer = emptyMsg ? emptyMsg.parentElement : document.querySelector('[role="tree"]');
-        if (!listContainer) return;
-
-        let extraContainer = document.getElementById('dsh-navigator-extra-results');
-        if (!extraContainer) {
-          extraContainer = document.createElement('div');
-          extraContainer.id = 'dsh-navigator-extra-results';
-          extraContainer.style.padding = '6px 0';
-          extraContainer.style.borderTop = '1px dashed var(--border-subtle, #e5e7eb)';
-          listContainer.appendChild(extraContainer);
+        if (!data || !data.ok || !data.items || data.items.length === 0) {
+          removeSearchEnhancerBox();
+          return;
         }
 
-        extraContainer.innerHTML = `<div style="font-size:11px;color:var(--text-muted,#888);padding:4px 8px;">按 ID / 全文检索命中 (${data.items.length})：</div>`;
+        // 寻找搜索容器挂载点（紧跟在输入框所在的父级或列表下方）
+        const searchInputBox = inputElement.closest('div') || inputElement.parentElement;
+        if (!searchInputBox) return;
+
+        let box = document.getElementById('dsh-search-enhancer');
+        if (!box) {
+          box = document.createElement('div');
+          box.id = 'dsh-search-enhancer';
+          box.className = 'dsh-search-enhancer-box';
+          // 插入到搜索输入行下方
+          if (searchInputBox.nextSibling) {
+            searchInputBox.parentNode.insertBefore(box, searchInputBox.nextSibling);
+          } else {
+            searchInputBox.parentNode.appendChild(box);
+          }
+        }
+
+        const count = data.items.length;
+        box.innerHTML = `
+          <div class="dsh-search-enhancer-header">
+            <span>精准 ID / 内容匹配 (${count})</span>
+            <span style="font-size:10px;color:#2563eb;">直达 ↗</span>
+          </div>
+          <div class="dsh-search-enhancer-list"></div>
+        `;
+
+        const listEl = box.querySelector('.dsh-search-enhancer-list');
 
         for (const item of data.items) {
           const row = document.createElement('div');
-          row.className = 'dsh-search-custom-row';
-          const title = item.turns && item.turns[0] ? item.turns[0].prompt : item.id;
-          const sub = item.cwd ? item.cwd.split('/').pop() : item.id.slice(0, 16);
+          row.className = 'dsh-search-item-row';
+          const title = (item.turns && item.turns[0] && item.turns[0].prompt)
+            ? item.turns[0].prompt
+            : item.id;
+          const cwdName = item.cwd ? item.cwd.split('/').pop() : '工作区';
+          const matchLabel = item.matchType === 'id' ? 'ID 命中' : '内容命中';
+          const snippetText = item.matchedSnippet || item.id;
 
           row.innerHTML = `
-            <div class="dsh-search-custom-meta">
-              <span class="dsh-search-custom-title">${title}</span>
-              <span class="dsh-search-custom-sub">ID: ${item.id.slice(0, 14)}… · ${sub}</span>
+            <div class="dsh-search-item-meta">
+              <span class="dsh-search-item-title">${title}</span>
+              <span class="dsh-search-item-snippet">
+                <span class="dsh-search-item-badge">${matchLabel}</span>
+                ${snippetText} · ${cwdName}
+              </span>
             </div>
-            <button class="dsh-open-window-btn" title="在新窗口打开" style="opacity:0.85;">↗</button>
+            <button class="dsh-open-window-btn" title="在新窗口中打开此会话">↗</button>
           `;
 
+          // 点击整行：在当前窗口平滑切换
           row.addEventListener('click', (e) => {
             const btn = e.target.closest('.dsh-open-window-btn');
             if (btn) {
               e.stopPropagation();
               openInNewWindow(`/?session=${item.id}`);
             } else {
-              // 在当前窗口切换
               window.location.href = `/?session=${item.id}`;
             }
           });
 
-          extraContainer.appendChild(row);
+          listEl.appendChild(row);
         }
       } catch (err) {
-        console.warn('[dsh-session-navigator] Fallback search error:', err);
+        console.warn('[dsh-session-navigator] Search render error:', err);
       }
     }
 
@@ -414,11 +459,15 @@ window.__ModuleLoader__.load({
       return () => {
         const style = document.getElementById('dsh-session-navigator-styles');
         if (style) style.remove();
+        removeSearchEnhancerBox();
       };
     }
 
+    // 声明 inject 为 DSH 稳定支持的服务
+    const inject = ['connection'];
+
     module.exports.apply = apply;
-    module.exports.inject = ['uiWorkspace'];
+    module.exports.inject = inject;
     return module.exports;
   },
 });

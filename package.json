@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-navigator",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "DeepSeek Harness 跨会话深层直达与多窗口导航插件：支持从链接/卡片直达指定会话与轮次（新窗口打开并自动滚动高亮），增强侧边栏搜索框支持 Session ID 穿透匹配与一键弹出新窗口。",
   "type": "module",
@@ -29,9 +29,8 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-ui-workspace",
-        "@deepseek-ai/dsh-client-ui-session"
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-ui-sidebar"
       ],
       "platform": "web"
     }
