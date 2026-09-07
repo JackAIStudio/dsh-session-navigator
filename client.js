@@ -9,33 +9,33 @@ window.__ModuleLoader__.load({
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
-        padding: 3px 10px !important;
-        margin: 2px 4px !important;
-        font-size: 12px !important;
+        padding: 4px 12px !important;
+        margin: 3px 4px !important;
+        font-size: 13px !important;
         font-weight: 500 !important;
         line-height: 1.4 !important;
         color: #2563eb !important;
         background: rgba(37, 99, 235, 0.08) !important;
-        border: 1px solid rgba(37, 99, 235, 0.28) !important;
+        border: 1px solid rgba(37, 99, 235, 0.3) !important;
         border-radius: 16px !important;
         text-decoration: none !important;
         cursor: pointer !important;
-        transition: all 0.15s ease-in-out !important;
+        transition: all 0.15s ease !important;
         vertical-align: baseline !important;
       }
       .dsh-session-anchor-capsule:hover {
-        background: rgba(37, 99, 235, 0.16) !important;
-        border-color: rgba(37, 99, 235, 0.5) !important;
+        background: rgba(37, 99, 235, 0.18) !important;
+        border-color: rgba(37, 99, 235, 0.6) !important;
         transform: translateY(-1px) !important;
-        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.18) !important;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2) !important;
       }
       .dsh-session-anchor-capsule .dsh-capsule-icon {
-        font-size: 13px !important;
+        font-size: 14px !important;
         line-height: 1 !important;
       }
       .dsh-session-anchor-capsule .dsh-capsule-arrow {
-        font-size: 11px !important;
-        opacity: 0.75 !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
         margin-left: 2px !important;
       }
 
@@ -43,7 +43,7 @@ window.__ModuleLoader__.load({
       @keyframes dshTurnPulse {
         0% {
           outline: 3px solid rgba(59, 130, 246, 0.9);
-          background-color: rgba(59, 130, 246, 0.15);
+          background-color: rgba(59, 130, 246, 0.18);
         }
         70% {
           outline: 3px solid rgba(59, 130, 246, 0.4);
@@ -59,34 +59,36 @@ window.__ModuleLoader__.load({
         border-radius: 8px !important;
       }
 
-      /* 搜索浮层与结果列表容器 */
+      /* 搜索增强卡片与容器 */
       .dsh-search-enhancer-box {
-        margin: 6px 8px;
-        padding: 6px;
+        margin: 4px 6px 8px;
+        padding: 4px;
         border-radius: 8px;
-        background: var(--bg-surface, rgba(255, 255, 255, 0.04));
-        border: 1px dashed var(--border-control, rgba(128, 128, 128, 0.25));
+        background: var(--bg-surface, rgba(128, 128, 128, 0.05));
+        border: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.2));
       }
       .dsh-search-enhancer-header {
         font-size: 11px;
         font-weight: 600;
         color: var(--text-muted, #888);
-        padding: 2px 6px 4px;
+        padding: 3px 6px 4px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        border-bottom: 1px dashed var(--border-subtle, rgba(128, 128, 128, 0.15));
+        margin-bottom: 4px;
       }
       .dsh-search-enhancer-list {
         display: grid;
-        gap: 4px;
-        max-height: 280px;
+        gap: 3px;
+        max-height: 300px;
         overflow-y: auto;
       }
       .dsh-search-item-row {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
+        gap: 6px;
         padding: 6px 8px;
         border-radius: 6px;
         background: transparent;
@@ -94,9 +96,11 @@ window.__ModuleLoader__.load({
         cursor: pointer;
         text-align: left;
         transition: background 0.12s ease;
+        width: 100%;
+        box-sizing: border-box;
       }
       .dsh-search-item-row:hover {
-        background: var(--bg-hover, rgba(128, 128, 128, 0.1));
+        background: var(--bg-hover, rgba(128, 128, 128, 0.12));
       }
       .dsh-search-item-meta {
         display: grid;
@@ -123,41 +127,40 @@ window.__ModuleLoader__.load({
         font-size: 10px;
         padding: 1px 4px;
         border-radius: 4px;
-        background: rgba(37, 99, 235, 0.1);
+        background: rgba(37, 99, 235, 0.12);
         color: #2563eb;
         display: inline-block;
         margin-right: 4px;
       }
 
-      /* 独立小弹窗打开按钮 */
+      /* 独立弹窗打开按钮 */
       .dsh-open-window-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 24px;
-        height: 24px;
+        width: 26px;
+        height: 26px;
         padding: 0;
-        border: none;
-        border-radius: 4px;
-        background: transparent;
-        color: var(--text-muted, #888);
+        border: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.2));
+        border-radius: 5px;
+        background: var(--bg-surface, rgba(255, 255, 255, 0.05));
+        color: var(--text-muted, #666);
         cursor: pointer;
         transition: all 0.15s ease;
         flex-shrink: 0;
         font-size: 14px;
-      }
-      .dsh-search-item-row:hover .dsh-open-window-btn,
-      [role="treeitem"]:hover .dsh-open-window-btn {
-        color: #2563eb;
+        line-height: 1;
       }
       .dsh-open-window-btn:hover {
-        background: rgba(37, 99, 235, 0.15) !important;
-        color: #2563eb !important;
-        transform: scale(1.1);
+        background: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #ffffff !important;
+        transform: scale(1.05);
       }
     `;
 
     function injectStyles() {
+      if (typeof document === 'undefined') return;
       if (document.getElementById('dsh-session-navigator-styles')) return;
       const style = document.createElement('style');
       style.id = 'dsh-session-navigator-styles';
@@ -165,34 +168,34 @@ window.__ModuleLoader__.load({
       document.head.appendChild(style);
     }
 
-    // 在新窗口打开，确保使用当前相同的 window.location.origin
+    // 在新独立窗口中打开指定路径，始终同源以复用登录凭证
     function openInNewWindow(targetPath) {
+      if (typeof window === 'undefined') return;
       const origin = window.location.origin;
       let fullUrl = targetPath;
       if (targetPath.startsWith('/')) {
         fullUrl = `${origin}${targetPath}`;
       } else if (targetPath.startsWith('http://') || targetPath.startsWith('https://')) {
-        // 如果是绝对路径，强制替换为当前 origin，保证 Cookie 绝对可用且不跨域
-        const u = new URL(targetPath);
-        fullUrl = `${origin}${u.pathname}${u.search}${u.hash}`;
+        try {
+          const u = new URL(targetPath);
+          fullUrl = `${origin}${u.pathname}${u.search}${u.hash}`;
+        } catch {
+          fullUrl = targetPath;
+        }
       }
 
-      const screenW = window.screen.availWidth || 1440;
-      const screenH = window.screen.availHeight || 900;
-      const width = Math.min(1280, Math.floor(screenW * 0.85));
-      const height = Math.min(880, Math.floor(screenH * 0.85));
-      const left = Math.max(30, Math.floor((screenW - width) / 2));
-      const top = Math.max(30, Math.floor((screenH - height) / 2));
-
-      window.open(
-        fullUrl,
-        '_blank',
-        `popup=true,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-      );
+      // 使用标准 _blank 打开新窗口，绝不添加引发拦截的复杂限制特性
+      const newWin = window.open(fullUrl, '_blank');
+      if (!newWin) {
+        // 如果被浏览器弹窗策略阻拦，回退到普通标签
+        window.location.href = fullUrl;
+      }
     }
 
-    // 1. 全局链接拦截：彻底解决跳外部浏览器及 401 报错
+    // 1. 全局链接拦截：拦截所有包含 session= 的链接
     function setupLinkInterceptor() {
+      if (typeof document === 'undefined') return;
+
       document.addEventListener('click', (e) => {
         const target = e.target;
         if (!(target instanceof Element)) return;
@@ -200,7 +203,6 @@ window.__ModuleLoader__.load({
         if (!link) return;
 
         const href = link.getAttribute('href') || '';
-        // 匹配任意指向 session 的链接
         if (
           href.includes('session=') ||
           href.startsWith('dsh://session') ||
@@ -214,8 +216,10 @@ window.__ModuleLoader__.load({
             const raw = href.replace('dsh://session/', '');
             queryPath = `/?session=${raw}`;
           } else if (href.startsWith('http://') || href.startsWith('https://')) {
-            const u = new URL(href);
-            queryPath = `${u.pathname}${u.search}`;
+            try {
+              const u = new URL(href);
+              queryPath = `${u.pathname}${u.search}`;
+            } catch {}
           } else if (!href.startsWith('/')) {
             queryPath = `/${href}`;
           }
@@ -225,20 +229,22 @@ window.__ModuleLoader__.load({
       }, true);
     }
 
-    // 2. 自动把消息里的 session 链接美化为胶囊
+    // 2. 自动把消息中的 session 链接美化为带 🧭 的胶囊
     function decorateCapsules() {
+      if (typeof document === 'undefined') return;
       const links = document.querySelectorAll('a[href*="session="]:not(.dsh-session-anchor-capsule)');
       for (const a of links) {
         a.classList.add('dsh-session-anchor-capsule');
         const text = a.textContent.trim();
         const hasArrow = text.includes('↗');
         a.innerHTML = `<span class="dsh-capsule-icon">🧭</span><span>${text}</span>${hasArrow ? '' : '<span class="dsh-capsule-arrow">↗</span>'}`;
-        a.setAttribute('title', '在独立新窗口中打开并直达指定轮次');
+        a.setAttribute('title', '在新独立窗口中打开并直达指定轮次');
       }
     }
 
-    // 3. 启动时的深层链接自寻址（自动选会话 + 滚到目标轮次）
+    // 3. 页面启动时的深层链接解析与自动寻址定位
     function handleDeepLinkStartup(ctx) {
+      if (typeof window === 'undefined') return;
       const search = window.location.search;
       if (!search || !search.includes('session=')) return;
 
@@ -249,23 +255,28 @@ window.__ModuleLoader__.load({
 
       if (!targetSessionId) return;
 
+      // 使用 Cordis 标准动态注入获取 sessions 或 workspaces，绝不直接读 ctx.workspaces
       let switched = false;
-      const selectSession = () => {
-        if (switched) return;
-        if (ctx?.workspaces && typeof ctx.workspaces.selectSession === 'function') {
-          ctx.workspaces.selectSession(targetSessionId);
-          switched = true;
-        } else if (ctx?.sessions && typeof ctx.sessions.select === 'function') {
-          try { ctx.sessions.select(targetSessionId); switched = true; } catch {}
-        }
-      };
-
-      selectSession();
-      if (!switched) {
-        setTimeout(selectSession, 200);
-        setTimeout(selectSession, 600);
+      if (typeof ctx?.inject === 'function') {
+        ctx.inject(['workspaces'], (sub) => {
+          if (switched) return;
+          if (typeof sub.workspaces?.selectSession === 'function') {
+            sub.workspaces.selectSession(targetSessionId);
+            switched = true;
+          }
+        });
+        ctx.inject(['sessions'], (sub) => {
+          if (switched) return;
+          if (typeof sub.sessions?.select === 'function') {
+            try {
+              sub.sessions.select(targetSessionId);
+              switched = true;
+            } catch {}
+          }
+        });
       }
 
+      // 如果需要定位到具体轮次，等待消息 DOM 出现后平滑滚动并高亮
       if (targetTurn || targetSeq) {
         let attempts = 0;
         const maxAttempts = 30;
@@ -280,7 +291,9 @@ window.__ModuleLoader__.load({
     }
 
     function locateAndHighlightTurn(targetTurn, targetSeq) {
-      // 方式 1：寻找文章/轮次容器
+      if (typeof document === 'undefined') return false;
+
+      // 寻找轮次节点
       const turnElements = document.querySelectorAll(
         '[data-turn-index], [data-turn], [data-seq], article, [role="article"], .message-group'
       );
@@ -293,7 +306,7 @@ window.__ModuleLoader__.load({
         }
       }
 
-      // 方式 2：联动触发 Codex Timeline 的短横线
+      // 联动高亮 Codex Timeline
       const timelineTicks = document.querySelectorAll('.codex-timeline-tick, [data-timeline-turn]');
       if (timelineTicks.length >= targetTurn && targetTurn > 0) {
         const tick = timelineTicks[targetTurn - 1];
@@ -306,9 +319,10 @@ window.__ModuleLoader__.load({
       return false;
     }
 
-    // 4. 左侧搜索框增强：监听输入，如果官方报“无匹配”，无缝注入真实匹配结果
+    // 4. 侧边栏搜索框增强：只要输入 >= 2 个字符，自动调后端并在下方渲染匹配浮层
     function enhanceSearchUI() {
-      let activeQuery = '';
+      if (typeof document === 'undefined') return;
+
       let fetchTimer = null;
 
       document.addEventListener('input', (e) => {
@@ -318,9 +332,9 @@ window.__ModuleLoader__.load({
         if (!placeholder.includes('搜索') && !placeholder.includes('search')) return;
 
         const val = target.value.trim();
-        activeQuery = val;
         clearTimeout(fetchTimer);
 
+        // 只要输入 2 个字符以上（例如 56 或 56c 或 56c6），立即触发检索
         if (!val || val.length < 2) {
           removeSearchEnhancerBox();
           return;
@@ -328,43 +342,13 @@ window.__ModuleLoader__.load({
 
         fetchTimer = setTimeout(async () => {
           await renderSearchEnhancerResults(val, target);
-        }, 180);
+        }, 150);
       }, true);
 
-      // 给原生的所有树节点也注入 [ ↗ ] 按钮
+      // DOM 变化监听：自动胶囊化
       const observer = new MutationObserver(() => {
         decorateCapsules();
-
-        const treeItems = document.querySelectorAll('[role="treeitem"]:not([data-dsh-open-ready])');
-        for (const item of treeItems) {
-          item.setAttribute('data-dsh-open-ready', 'true');
-          const btn = document.createElement('button');
-          btn.className = 'dsh-open-window-btn';
-          btn.title = '在新窗口中打开此会话';
-          btn.innerHTML = '↗';
-          btn.addEventListener('click', (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-
-            const sid = item.getAttribute('data-session-id') ||
-                        item.getAttribute('id') ||
-                        item.getAttribute('key');
-            if (sid && sid.startsWith('session-')) {
-              openInNewWindow(`/?session=${sid}`);
-            } else {
-              const text = item.textContent || '';
-              const match = text.match(/session-[0-9a-f-]{8,}/);
-              if (match) {
-                openInNewWindow(`/?session=${match[0]}`);
-              } else {
-                item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-              }
-            }
-          });
-          item.appendChild(btn);
-        }
       });
-
       observer.observe(document.body, { childList: true, subtree: true });
     }
 
@@ -383,7 +367,6 @@ window.__ModuleLoader__.load({
           return;
         }
 
-        // 寻找搜索容器挂载点（紧跟在输入框所在的父级或列表下方）
         const searchInputBox = inputElement.closest('div') || inputElement.parentElement;
         if (!searchInputBox) return;
 
@@ -392,7 +375,6 @@ window.__ModuleLoader__.load({
           box = document.createElement('div');
           box.id = 'dsh-search-enhancer';
           box.className = 'dsh-search-enhancer-box';
-          // 插入到搜索输入行下方
           if (searchInputBox.nextSibling) {
             searchInputBox.parentNode.insertBefore(box, searchInputBox.nextSibling);
           } else {
@@ -404,7 +386,7 @@ window.__ModuleLoader__.load({
         box.innerHTML = `
           <div class="dsh-search-enhancer-header">
             <span>精准 ID / 内容匹配 (${count})</span>
-            <span style="font-size:10px;color:#2563eb;">直达 ↗</span>
+            <span style="font-size:10px;color:#2563eb;">独立窗口 ↗</span>
           </div>
           <div class="dsh-search-enhancer-list"></div>
         `;
@@ -419,7 +401,7 @@ window.__ModuleLoader__.load({
             : item.id;
           const cwdName = item.cwd ? item.cwd.split('/').pop() : '工作区';
           const matchLabel = item.matchType === 'id' ? 'ID 命中' : '内容命中';
-          const snippetText = item.matchedSnippet || item.id;
+          const snippetText = item.matchedSnippet || item.id.slice(0, 16);
 
           row.innerHTML = `
             <div class="dsh-search-item-meta">
@@ -429,13 +411,14 @@ window.__ModuleLoader__.load({
                 ${snippetText} · ${cwdName}
               </span>
             </div>
-            <button class="dsh-open-window-btn" title="在新窗口中打开此会话">↗</button>
+            <button class="dsh-open-window-btn" title="在新独立窗口中打开此会话">↗</button>
           `;
 
-          // 点击整行：在当前窗口平滑切换
+          // 点击整行：在当前窗口切换
           row.addEventListener('click', (e) => {
             const btn = e.target.closest('.dsh-open-window-btn');
             if (btn) {
+              e.preventDefault();
               e.stopPropagation();
               openInNewWindow(`/?session=${item.id}`);
             } else {
@@ -463,8 +446,8 @@ window.__ModuleLoader__.load({
       };
     }
 
-    // 声明 inject 为 DSH 稳定支持的服务
-    const inject = ['connection'];
+    // 声明为安全的空注入，依靠动态 ctx.inject 保证绝不报错
+    const inject = [];
 
     module.exports.apply = apply;
     module.exports.inject = inject;
