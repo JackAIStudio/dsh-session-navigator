@@ -1,8 +1,8 @@
 {
   "name": "dsh-session-navigator",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
-  "description": "DeepSeek Harness 跨会话深层直达与多窗口导航插件：支持从链接/卡片直达指定会话与轮次（新窗口打开并自动滚动高亮），增强侧边栏搜索框支持 Session ID 穿透匹配与一键弹出新窗口。",
+  "description": "增强左上角官方「搜索会话」（Session ID 命中 + 新窗口打开），并让聊天里的 session id 可在新窗口直达指定会话与轮次。不劫持 Codex Timeline 搜索。",
   "type": "module",
   "main": "./index.js",
   "exports": {
@@ -14,11 +14,15 @@
   "files": [
     "index.js",
     "client.js",
+    "protocol.js",
     "cordis.patch.yml",
     "README.zh.md",
     "LICENSE",
     "skill"
   ],
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/JackAIStudio/dsh-session-navigator.git"

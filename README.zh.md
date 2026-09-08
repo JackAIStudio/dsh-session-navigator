@@ -1,66 +1,55 @@
 # 🧭 dsh-session-navigator
 
-> **DeepSeek Harness 跨会话深层直达与多窗口导航插件**  
-> 支持从 AI 消息链接/卡片直达指定历史会话与轮次（新窗口打开并自动滚动高亮），同时增强侧边栏搜索框支持 Session ID 穿透匹配与一键弹出新窗口。
+> DeepSeek Harness 跨会话深层直达与多窗口导航  
+> 增强**左上角官方「搜索会话」**（不是 Codex Timeline 搜索），并让聊天里的 session id 能在新窗口打开指定会话 / 轮次。
 
 ---
 
-## 💡 解决的痛点
+## 解决的痛点
 
-在多会话、长工作流中，创作者经常需要回顾历史会话或某个具体决策：
-1. **找不到历史会话**：左侧搜索框输入 Session ID（如 `56c6db`）直接显示“无匹配会话”，因为官方仅比对了标题；
-2. **当前聊天易被切走**：每次点击历史会话，当前聊天窗口就被冲掉，查完还得费劲切回来；
-3. **在横线堆里“数楼梯”**：即使切进会长会话，要在几十条 Codex Timeline 短横线里手动数“第几轮是那个决策”，极度耗时费神。
-
----
-
-## ✨ 核心特性
-
-### 1. 🔍 侧边栏搜索框增强（Search Plus）
-- **Session ID 穿透匹配**：在左上角搜索框输入会话 ID（前缀或完整 ID），直接精准召回；
-- **一键新窗口打开 `[ ↗ ]`**：搜索结果每一项右侧悬停展示独立窗口按钮，点击直接弹出新独立窗口，当前窗口保持聊天不中断。
-
-### 2. 🧭 会话与轮次深层直达（Deep Link & Turn Anchor）
-- **交互胶囊按钮**：AI 在回复中引用历史会话时输出带参链接，前端自动美化为带 🧭 图标的直达胶囊；
-- **点击绝不冲窗口**：拦截所有内部会话链接，自动调用系统弹窗在新独立窗口中呈现；
-- **自动滚动与呼吸光晕**：新窗口载入后，自动平滑滚动定位到指定的第 N 轮，并辅以高亮脉冲动画。
-
-### 3. 🤖 配套 Skill 指南（`dsh-session-navigator`）
-- 自动指导 Agent 在回复用户时生成标准格式的深层链接：
-  ```markdown
-  [查看会话：@skill使用范例 · 第 1 轮 ↗](http://127.0.0.1:3080/?session=session-75271ba9-0162-4071&turn=1)
-  ```
+1. 官方侧栏搜索只匹配标题和工作区名，输入 `56c6db` 这种 Session ID 会显示「无匹配会话」；
+2. 点开历史会话会冲掉当前窗口；
+3. 长会话里要自己数「第几轮」。
 
 ---
 
-## 📦 安装与配置
+## 核心行为
 
-### 方式一：装机清单（dsh-setup）
-已登记至 JackAIStudio 装机清单 `catalog.yaml`：
-```yaml
-plugins:
-  own:
-    - name: dsh-session-navigator
-      spec: "github:JackAIStudio/dsh-session-navigator"
-      develop: "link:$HOME/Documents/dshspace/plugins/dsh-session-navigator"
-      priority: core
-```
+### 1. 只增强左上角官方搜索框
 
-### 方式二：本地链接安装
-在 `$DSH_HOME/profiles/web` 下加入本地 link：
+目标输入框的文案是 **「搜索会话…」** / **Search sessions...**，在会话列表上方。
+
+- **不**劫持右侧 Codex Timeline 的历史搜索；
+- **不**在对话区再插一块「精准 ID / 内容匹配」浮层。
+
+做法：输入时立刻用内存会话列表匹配 ID（不等全文检索），在官方结果区顶部显示「会话标题 + ↗」。点标题在当前窗口打开；点 **↗**（`<a target="_blank">`）新窗口打开。
+
+### 2. 聊天里的会话直达
+
+DSH Markdown 不会把 `/?session=` 相对链接渲染成可点 `<a>`。配套 Skill 要求把完整 session id 写在行内代码里；插件把它画成胶囊，**可见文字是会话标题**，id 放在 tooltip。点击后新窗口打开并滚动到 `[data-chat-turn]`。
+
+同页的 http(s) 会话链接会改写为当前源相对地址，避免 Better Sidebar 当成外部网页拦走。
+
+---
+
+## 安装
+
+开发机：
+
 ```bash
 pnpm --dir ~/.dsh/profiles/web add link:~/Documents/dshspace/plugins/dsh-session-navigator
 ```
 
-在 `cordis.patch.yml` 中追加：
-```yaml
-- insert:
-    - id: dsh-session-navigator
-      name: dsh-session-navigator
+改完 host / client 后需要重启一次 `dsh web`（不要在对话里代劳杀进程）。
+
+Skill：
+
+```bash
+ln -sfn "$HOME/Documents/dshspace/plugins/dsh-session-navigator/skill" "$HOME/.agents/skills/dsh-session-navigator"
 ```
 
 ---
 
-## 📄 开源许可
+## 开源许可
 
 MIT License © 2026 [JackAIStudio](https://github.com/JackAIStudio)

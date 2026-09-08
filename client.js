@@ -1,461 +1,631 @@
 window.__ModuleLoader__.load({
   id: 'dsh-session-navigator',
   factory: (require) => {
-    const module = { exports: {} };
+    const module = { exports: {} }
 
+    const SESSION_ID_RE = /session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
     const CSS_STYLES = `
-      /* 会话与轮次深层直达胶囊 */
       .dsh-session-anchor-capsule {
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
-        padding: 4px 12px !important;
-        margin: 3px 4px !important;
-        font-size: 13px !important;
+        padding: 2px 10px !important;
+        margin: 0 2px !important;
+        font-size: 12px !important;
         font-weight: 500 !important;
         line-height: 1.4 !important;
         color: #2563eb !important;
         background: rgba(37, 99, 235, 0.08) !important;
-        border: 1px solid rgba(37, 99, 235, 0.3) !important;
-        border-radius: 16px !important;
+        border: 1px solid rgba(37, 99, 235, 0.28) !important;
+        border-radius: 999px !important;
         text-decoration: none !important;
         cursor: pointer !important;
-        transition: all 0.15s ease !important;
         vertical-align: baseline !important;
+        max-width: 100%;
       }
       .dsh-session-anchor-capsule:hover {
-        background: rgba(37, 99, 235, 0.18) !important;
-        border-color: rgba(37, 99, 235, 0.6) !important;
-        transform: translateY(-1px) !important;
-        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2) !important;
+        background: rgba(37, 99, 235, 0.16) !important;
+        border-color: rgba(37, 99, 235, 0.55) !important;
       }
-      .dsh-session-anchor-capsule .dsh-capsule-icon {
-        font-size: 14px !important;
-        line-height: 1 !important;
-      }
-      .dsh-session-anchor-capsule .dsh-capsule-arrow {
-        font-size: 12px !important;
-        font-weight: 600 !important;
-        margin-left: 2px !important;
-      }
-
-      /* 目标轮次高亮脉冲动画 */
       @keyframes dshTurnPulse {
-        0% {
-          outline: 3px solid rgba(59, 130, 246, 0.9);
-          background-color: rgba(59, 130, 246, 0.18);
-        }
-        70% {
-          outline: 3px solid rgba(59, 130, 246, 0.4);
-          background-color: rgba(59, 130, 246, 0.08);
-        }
-        100% {
-          outline: 3px solid transparent;
-          background-color: transparent;
-        }
+        0% { outline: 3px solid rgba(59, 130, 246, 0.9); background-color: rgba(59, 130, 246, 0.16); }
+        100% { outline: 3px solid transparent; background-color: transparent; }
       }
       .dsh-navigator-highlight {
-        animation: dshTurnPulse 2.5s ease-out forwards !important;
+        animation: dshTurnPulse 2.4s ease-out forwards !important;
         border-radius: 8px !important;
       }
-
-      /* 搜索增强卡片与容器 */
-      .dsh-search-enhancer-box {
-        margin: 4px 6px 8px;
-        padding: 4px;
-        border-radius: 8px;
-        background: var(--bg-surface, rgba(128, 128, 128, 0.05));
-        border: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.2));
+      #dsh-nav-id-hits {
+        margin: 4px 8px 8px;
+        padding-bottom: 4px;
       }
-      .dsh-search-enhancer-header {
+      .dsh-nav-id-hits-header {
         font-size: 11px;
         font-weight: 600;
-        color: var(--text-muted, #888);
-        padding: 3px 6px 4px;
+        color: var(--dsw-alias-label-tertiary, #888);
+        padding: 2px 4px 6px;
+      }
+      .dsh-nav-id-row {
+        position: relative;
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px dashed var(--border-subtle, rgba(128, 128, 128, 0.15));
-        margin-bottom: 4px;
+        align-items: stretch;
+        gap: 4px;
+        margin: 0 0 2px;
       }
-      .dsh-search-enhancer-list {
-        display: grid;
-        gap: 3px;
-        max-height: 300px;
-        overflow-y: auto;
-      }
-      .dsh-search-item-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 6px;
-        padding: 6px 8px;
-        border-radius: 6px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        text-align: left;
-        transition: background 0.12s ease;
-        width: 100%;
-        box-sizing: border-box;
-      }
-      .dsh-search-item-row:hover {
-        background: var(--bg-hover, rgba(128, 128, 128, 0.12));
-      }
-      .dsh-search-item-meta {
-        display: grid;
-        gap: 2px;
-        min-width: 0;
+      .dsh-nav-id-main {
         flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 6px 8px;
+        border: none;
+        border-radius: 8px;
+        background: transparent;
+        color: inherit;
+        text-align: left;
+        cursor: pointer;
+        user-select: none;
       }
-      .dsh-search-item-title {
-        font-size: 12px;
+      .dsh-nav-id-main:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.12)); }
+      .dsh-nav-id-title {
+        font-size: 13px;
+        line-height: 18px;
         font-weight: 500;
-        color: var(--text-title, #222);
-        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .dsh-search-item-snippet {
+      .dsh-nav-id-meta {
         font-size: 11px;
-        color: var(--text-muted, #777);
-        white-space: nowrap;
+        line-height: 16px;
+        color: var(--dsw-alias-label-tertiary, #888);
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
       }
-      .dsh-search-item-badge {
-        font-size: 10px;
-        padding: 1px 4px;
-        border-radius: 4px;
-        background: rgba(37, 99, 235, 0.12);
-        color: #2563eb;
-        display: inline-block;
-        margin-right: 4px;
-      }
-
-      /* 独立弹窗打开按钮 */
-      .dsh-open-window-btn {
+      .dsh-nav-new-window {
+        flex: none;
+        align-self: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.25));
+        background: var(--dsw-alias-bg-base, transparent);
+        color: var(--dsw-alias-label-secondary, #666);
+        font-size: 13px;
+        line-height: 24px;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        user-select: none;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 26px;
-        height: 26px;
-        padding: 0;
-        border: 1px solid var(--border-subtle, rgba(128, 128, 128, 0.2));
-        border-radius: 5px;
-        background: var(--bg-surface, rgba(255, 255, 255, 0.05));
-        color: var(--text-muted, #666);
-        cursor: pointer;
-        transition: all 0.15s ease;
-        flex-shrink: 0;
-        font-size: 14px;
-        line-height: 1;
       }
-      .dsh-open-window-btn:hover {
+      .dsh-nav-new-window:hover {
         background: #2563eb !important;
         border-color: #2563eb !important;
-        color: #ffffff !important;
-        transform: scale(1.05);
+        color: #fff !important;
       }
-    `;
+
+      /* 官方搜索结果项注入的小图标按钮 */
+      .dsh-nav-tree-item-arrow {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        margin-left: auto;
+        margin-right: 4px;
+        border-radius: 4px;
+        border: 1px solid var(--dsw-alias-border-l2, rgba(128, 128, 128, 0.2));
+        background: var(--dsw-alias-bg-base, rgba(128, 128, 128, 0.06));
+        color: var(--dsw-alias-label-secondary, #666);
+        font-size: 12px;
+        line-height: 20px;
+        text-align: center;
+        cursor: pointer;
+        user-select: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.6;
+        transition: all 0.12s ease;
+      }
+      [role="treeitem"]:hover .dsh-nav-tree-item-arrow {
+        opacity: 1;
+      }
+      .dsh-nav-tree-item-arrow:hover {
+        background: #2563eb !important;
+        border-color: #2563eb !important;
+        color: #fff !important;
+        transform: scale(1.06);
+      }
+    `
+
+    let bootNav = captureBootNavNow()
+    let sessionsRef = null
+
+    function captureBootNavNow() {
+      if (typeof window === 'undefined') return null
+      try {
+        const href = window.location.href
+        const nav = parseNavFromUrl(href)
+        if (nav) sessionStorage.setItem('dsh-nav-boot', href)
+        const stored = sessionStorage.getItem('dsh-nav-boot')
+        return nav || (stored ? parseNavFromUrl(stored) : null)
+      } catch {
+        return parseNavFromUrl(window.location.href)
+      }
+    }
+
+    function normalizeSessionId(value) {
+      const match = String(value || '').match(SESSION_ID_RE)
+      return match ? match[0].toLowerCase() : null
+    }
+
+    function parseTurn(value) {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.floor(value)
+      const text = String(value || '').trim()
+      if (!text) return null
+      const direct = parseInt(text, 10)
+      if (Number.isFinite(direct) && direct > 0) return direct
+      const match = text.match(/(?:第|\bturn[-_\s]*)(\d+)(?:\s*轮|\b)/i)
+      return match ? parseInt(match[1], 10) : null
+    }
+
+    function parseNavFromUrl(raw) {
+      if (!raw) return null
+      try {
+        const url = new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3080')
+        const sessionId = normalizeSessionId(url.searchParams.get('session') || url.pathname || '')
+        if (!sessionId) return null
+        const turn = parseTurn(url.searchParams.get('turn'))
+        return { sessionId, turn }
+      } catch {
+        return null
+      }
+    }
+
+    function extractTurnFromText(text) {
+      return parseTurn(text)
+    }
+
+    function formatCapsuleLabel(title, sessionId, turn) {
+      const parts = ['🧭']
+      if (title) parts.push(title)
+      else if (sessionId) parts.push(sessionId.slice(0, 8))
+      if (turn) parts.push(`第 ${turn} 轮`)
+      parts.push('↗')
+      return parts.join(' · ')
+    }
+
+    function sessionTitleOf(sessionId) {
+      const snap = sessionsRef?.list?.getSnapshot?.()
+      const row = snap?.byId?.[sessionId]
+      return row?.displayTitle || row?.title || ''
+    }
+
+    function findOfficialSearchInput() {
+      const inputs = document.querySelectorAll('input')
+      for (const input of inputs) {
+        if (isOfficialSearchInput(input)) return input
+      }
+      return null
+    }
+
+    function isOfficialSearchInput(el) {
+      if (!(el instanceof HTMLInputElement)) return false
+      const label = (el.getAttribute('aria-label') || '').toLowerCase()
+      const holder = (el.getAttribute('placeholder') || '').toLowerCase()
+      return label.includes('搜索会话') || label.includes('search sessions') ||
+        holder.includes('搜索会话') || holder.includes('search sessions')
+    }
 
     function injectStyles() {
-      if (typeof document === 'undefined') return;
-      if (document.getElementById('dsh-session-navigator-styles')) return;
-      const style = document.createElement('style');
-      style.id = 'dsh-session-navigator-styles';
-      style.textContent = CSS_STYLES;
-      document.head.appendChild(style);
+      if (document.getElementById('dsh-session-navigator-styles')) return
+      const style = document.createElement('style')
+      style.id = 'dsh-session-navigator-styles'
+      style.textContent = CSS_STYLES
+      document.head.appendChild(style)
     }
 
-    function openInNewWindow(targetPath) {
-      if (typeof window === 'undefined') return;
-      const origin = window.location.origin;
-      let fullUrl = targetPath;
-      if (targetPath.startsWith('/')) {
-        fullUrl = `${origin}${targetPath}`;
-      } else if (targetPath.startsWith('http://') || targetPath.startsWith('https://')) {
+    function removeStrayOverlay() {
+      document.getElementById('dsh-search-enhancer')?.remove()
+      document.querySelectorAll('.dsh-search-enhancer-box').forEach((el) => el.remove())
+    }
+
+    function navUrl(sessionId, turn) {
+      // 保持使用当前 Origin（解决 401 和域名隔离）
+      const origin = window.location.origin
+      const url = new URL(origin)
+      url.pathname = '/'
+      url.searchParams.set('session', sessionId)
+      if (turn) url.searchParams.set('turn', String(turn))
+      else url.searchParams.delete('turn')
+      url.hash = ''
+      return url.toString()
+    }
+
+    function openInNewWindow(sessionId, turn) {
+      const url = navUrl(sessionId, turn)
+      const opened = window.open(url, '_blank')
+      if (!opened) {
+        const probe = document.createElement('a')
+        probe.href = url
+        probe.target = '_blank'
+        probe.rel = 'noopener'
+        probe.click()
+      }
+    }
+
+    function jumpToTurn(turn) {
+      if (!turn) return
+      let attempts = 0
+      const timer = setInterval(() => {
+        attempts += 1
+        const row = document.querySelector(`[data-chat-turn="${turn}"]`)
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          row.classList.add('dsh-navigator-highlight')
+          clearInterval(timer)
+          return
+        }
+        const labeled = document.querySelector(
+          `button[aria-label="第 ${turn} 轮"], button[aria-label="Turn ${turn}"]`,
+        )
+        if (labeled) {
+          labeled.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          labeled.classList.add('dsh-navigator-highlight')
+          clearInterval(timer)
+          return
+        }
+        if (attempts >= 40) clearInterval(timer)
+      }, 200)
+    }
+
+    // 核心切换逻辑：带自愈订阅，等待会话数据拉取就绪后精准进入
+    function openSessionInThisWindow(sessionId, turn) {
+      const sessions = sessionsRef
+      if (!sessions) return
+
+      let done = false
+      const finish = () => {
+        if (done) return true
+        if (sessions.list?.getSnapshot?.()?.current === sessionId) {
+          done = true
+          if (turn) setTimeout(() => jumpToTurn(turn), 250)
+          return true
+        }
+        return false
+      }
+
+      const attempt = () => {
         try {
-          const u = new URL(targetPath);
-          fullUrl = `${origin}${u.pathname}${u.search}${u.hash}`;
-        } catch {
-          fullUrl = targetPath;
-        }
-      }
-
-      const newWin = window.open(fullUrl, '_blank');
-      if (!newWin) {
-        window.location.href = fullUrl;
-      }
-    }
-
-    // 1. 全局链接拦截：拦截所有包含 session= 的链接
-    function setupLinkInterceptor() {
-      if (typeof document === 'undefined') return;
-
-      document.addEventListener('click', (e) => {
-        const target = e.target;
-        if (!(target instanceof Element)) return;
-        const link = target.closest('a');
-        if (!link) return;
-
-        const href = link.getAttribute('href') || '';
-        if (
-          href.includes('session=') ||
-          href.startsWith('dsh://session') ||
-          (link.dataset && link.dataset.dshSession)
-        ) {
-          e.preventDefault();
-          e.stopPropagation();
-
-          let queryPath = href;
-          if (href.startsWith('dsh://session/')) {
-            const raw = href.replace('dsh://session/', '');
-            queryPath = `/?session=${raw}`;
-          } else if (href.startsWith('http://') || href.startsWith('https://')) {
-            try {
-              const u = new URL(href);
-              queryPath = `${u.pathname}${u.search}`;
-            } catch {}
-          } else if (!href.startsWith('/')) {
-            queryPath = `/${href}`;
+          // 官方 API：sessions.open(sessionId)
+          if (typeof sessions.open === 'function') {
+            sessions.open(sessionId)
+            return finish()
           }
-
-          openInNewWindow(queryPath);
+        } catch (error) {
+          console.warn('[dsh-session-navigator] sessions.open error:', error)
         }
-      }, true);
+        return false
+      }
+
+      if (attempt()) return
+
+      // 订阅会话列表：一旦数据准备就绪（非空），立刻执行 open
+      const unsub = typeof sessions.list?.subscribe === 'function'
+        ? sessions.list.subscribe(() => {
+          if (attempt() && typeof unsub === 'function') unsub()
+        })
+        : null
+
+      let tries = 0
+      const timer = setInterval(() => {
+        tries += 1
+        if (attempt() || tries >= 50) {
+          clearInterval(timer)
+          if (typeof unsub === 'function') unsub()
+        }
+      }, 120)
     }
 
-    // 2. 自动把消息中的 session 链接美化为带 🧭 的胶囊
-    function decorateCapsules() {
-      if (typeof document === 'undefined') return;
-      const links = document.querySelectorAll('a[href*="session="]:not(.dsh-session-anchor-capsule)');
-      for (const a of links) {
-        a.classList.add('dsh-session-anchor-capsule');
-        const text = a.textContent.trim();
-        const hasArrow = text.includes('↗');
-        a.innerHTML = `<span class="dsh-capsule-icon">🧭</span><span>${text}</span>${hasArrow ? '' : '<span class="dsh-capsule-arrow">↗</span>'}`;
-        a.setAttribute('title', '在新独立窗口中打开并直达指定轮次');
+    function collectIdHits(query) {
+      const q = String(query || '').trim().toLowerCase()
+      if (q.length < 2) return []
+      const snap = sessionsRef?.list?.getSnapshot?.()
+      if (!snap?.ids) return []
+      const hits = []
+      for (const id of snap.ids) {
+        if (typeof id !== 'string' || !id.toLowerCase().includes(q)) continue
+        const row = snap.byId?.[id]
+        if (row?.blank) continue
+        hits.push({
+          sessionId: id,
+          title: row?.displayTitle || row?.title || id,
+          workspace: row?.cwd ? String(row.cwd).split(/[/\\]/).pop() : '',
+        })
+        if (hits.length >= 20) break
+      }
+      return hits
+    }
+
+    function findSearchResultsHost() {
+      const tree = document.querySelector('[role="tree"][aria-label="搜索结果"]')
+        || document.querySelector('[role="tree"][aria-label="Search results"]')
+      if (tree?.parentElement) return tree.parentElement
+      const input = findOfficialSearchInput()
+      if (!input) return null
+      let el = input.parentElement
+      for (let i = 0; i < 12 && el; i++) {
+        const status = [...el.querySelectorAll('[role="status"]')].find((node) => /搜索|Search/.test(node.textContent || ''))
+        if (status?.parentElement) return status.parentElement
+        el = el.parentElement
+      }
+      return null
+    }
+
+    function hideOfficialEmpty(host, hasHits) {
+      if (!host) return
+      for (const el of host.querySelectorAll('[role="status"], [class*="empty"], [class*="searchStatus"]')) {
+        const text = (el.textContent || '').trim()
+        if (!/正在搜索会话历史|无匹配会话|Searching session history|No matching sessions/.test(text)) continue
+        if (text.length > 40) continue
+        el.style.display = hasHits ? 'none' : ''
       }
     }
 
-    // 3. 页面启动时的深层链接解析与自动寻址定位
-    function handleDeepLinkStartup(ctx) {
-      if (typeof window === 'undefined') return;
-      const search = window.location.search;
-      if (!search || !search.includes('session=')) return;
+    function renderInstantIdHits(query) {
+      const host = findSearchResultsHost()
+      const hits = collectIdHits(query)
+      let box = document.getElementById('dsh-nav-id-hits')
+      if (!query || query.trim().length < 2 || hits.length === 0) {
+        box?.remove()
+        if (host) hideOfficialEmpty(host, false)
+        return
+      }
+      if (!host) return
+      if (!box) {
+        box = document.createElement('div')
+        box.id = 'dsh-nav-id-hits'
+        host.insertBefore(box, host.firstChild)
+      } else if (box.parentElement !== host) {
+        host.insertBefore(box, host.firstChild)
+      }
+      box.innerHTML = ''
+      const header = document.createElement('div')
+      header.className = 'dsh-nav-id-hits-header'
+      header.textContent = `ID 命中（${hits.length}）`
+      box.appendChild(header)
 
-      const params = new URLSearchParams(search);
-      const targetSessionId = params.get('session');
-      const targetTurn = params.get('turn') ? parseInt(params.get('turn'), 10) : null;
-      const targetSeq = params.get('seq') ? parseInt(params.get('seq'), 10) : null;
+      for (const hit of hits) {
+        const row = document.createElement('div')
+        row.className = 'dsh-nav-id-row'
+        const main = document.createElement('button')
+        main.type = 'button'
+        main.className = 'dsh-nav-id-main'
+        main.dataset.dshSession = hit.sessionId
+        main.innerHTML = `<span class="dsh-nav-id-title"></span><span class="dsh-nav-id-meta"></span>`
+        main.querySelector('.dsh-nav-id-title').textContent = hit.title || hit.sessionId
+        main.querySelector('.dsh-nav-id-meta').textContent = [hit.workspace, hit.sessionId].filter(Boolean).join(' · ')
 
-      if (!targetSessionId) return;
-
-      // 使用官方标准的 sessions.open(sessionId) 切换会话
-      let switched = false;
-      const openSession = () => {
-        if (switched) return;
-        try {
-          if (typeof ctx.sessions?.open === 'function') {
-            ctx.sessions.open(targetSessionId);
-            switched = true;
-          }
-        } catch (e) {
-          console.warn('[dsh-session-navigator] sessions.open error:', e);
+        // 触控板一击必中优化：在 pointerdown 上阻止失焦并立即响应
+        const triggerOpen = (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          openSessionInThisWindow(hit.sessionId)
         }
-      };
+        main.addEventListener('pointerdown', (e) => {
+          e.preventDefault() // 阻止搜索输入框失焦导致丢点击
+        })
+        main.addEventListener('pointerup', triggerOpen)
+        main.addEventListener('click', triggerOpen)
 
-      openSession();
-      if (!switched) {
-        setTimeout(openSession, 200);
-        setTimeout(openSession, 600);
-        setTimeout(openSession, 1200);
-      }
+        const arrow = document.createElement('a')
+        arrow.className = 'dsh-nav-new-window'
+        arrow.href = `/?session=${encodeURIComponent(hit.sessionId)}`
+        arrow.dataset.dshSession = hit.sessionId
+        arrow.title = '在新窗口打开'
+        arrow.textContent = '↗'
 
-      // 如果指定了目标轮次，等待消息 DOM 出现后平滑滚动并高亮
-      if (targetTurn || targetSeq) {
-        let attempts = 0;
-        const maxAttempts = 40;
-        const timer = setInterval(() => {
-          attempts++;
-          const located = locateAndHighlightTurn(targetTurn, targetSeq);
-          if (located || attempts >= maxAttempts) {
-            clearInterval(timer);
-          }
-        }, 200);
+        const triggerNewWindow = (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          openInNewWindow(hit.sessionId)
+        }
+        arrow.addEventListener('pointerdown', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        })
+        arrow.addEventListener('pointerup', triggerNewWindow)
+        arrow.addEventListener('click', triggerNewWindow)
+
+        row.appendChild(main)
+        row.appendChild(arrow)
+        box.appendChild(row)
       }
+      hideOfficialEmpty(host, true)
     }
 
-    function locateAndHighlightTurn(targetTurn, targetSeq) {
-      if (typeof document === 'undefined') return false;
+    // 给官方原生搜索结果列表项（如搜“测试”）也挂上 [ ↗ ] 按钮
+    function injectArrowsToOfficialSearchResults() {
+      const tree = document.querySelector('[role="tree"][aria-label="搜索结果"]')
+        || document.querySelector('[role="tree"][aria-label="Search results"]')
+        || document.querySelector('.searchTree')
+      if (!tree) return
 
-      // 方式 1：寻找轮次节点
-      const turnElements = document.querySelectorAll(
-        '[data-turn-index], [data-turn], [data-seq], article, [role="article"], .message-group'
-      );
-      if (turnElements.length >= targetTurn && targetTurn > 0) {
-        const target = turnElements[targetTurn - 1];
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.classList.add('dsh-navigator-highlight');
-          return true;
-        }
-      }
+      const rows = tree.querySelectorAll('[role="treeitem"]:not([data-dsh-arrow-injected])')
+      const snap = sessionsRef?.list?.getSnapshot?.()
+      if (!snap?.byId) return
 
-      // 方式 2：联动高亮 Codex Timeline
-      const timelineTicks = document.querySelectorAll('.codex-timeline-tick, [data-timeline-turn]');
-      if (timelineTicks.length >= targetTurn && targetTurn > 0) {
-        const tick = timelineTicks[targetTurn - 1];
-        if (tick) {
-          tick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-          return true;
-        }
-      }
+      for (const row of rows) {
+        if (row.closest('#dsh-nav-id-hits')) continue
+        row.setAttribute('data-dsh-arrow-injected', 'true')
 
-      return false;
-    }
-
-    // 4. 侧边栏搜索框增强
-    function enhanceSearchUI(ctx) {
-      if (typeof document === 'undefined') return;
-
-      let fetchTimer = null;
-
-      document.addEventListener('input', (e) => {
-        const target = e.target;
-        if (!(target instanceof HTMLInputElement)) return;
-        const placeholder = (target.getAttribute('placeholder') || '').toLowerCase();
-        if (!placeholder.includes('搜索') && !placeholder.includes('search')) return;
-
-        const val = target.value.trim();
-        clearTimeout(fetchTimer);
-
-        // 只要输入 >= 2 字符，立即调后端查匹配项
-        if (!val || val.length < 2) {
-          removeSearchEnhancerBox();
-          return;
-        }
-
-        fetchTimer = setTimeout(async () => {
-          await renderSearchEnhancerResults(val, target, ctx);
-        }, 150);
-      }, true);
-
-      const observer = new MutationObserver(() => {
-        decorateCapsules();
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    }
-
-    function removeSearchEnhancerBox() {
-      const el = document.getElementById('dsh-search-enhancer');
-      if (el) el.remove();
-    }
-
-    async function renderSearchEnhancerResults(query, inputElement, ctx) {
-      try {
-        const res = await fetch(`/dsh-session-navigator/search?q=${encodeURIComponent(query)}&limit=10`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!data || !data.ok || !data.items || data.items.length === 0) {
-          removeSearchEnhancerBox();
-          return;
-        }
-
-        const searchInputBox = inputElement.closest('div') || inputElement.parentElement;
-        if (!searchInputBox) return;
-
-        let box = document.getElementById('dsh-search-enhancer');
-        if (!box) {
-          box = document.createElement('div');
-          box.id = 'dsh-search-enhancer';
-          box.className = 'dsh-search-enhancer-box';
-          if (searchInputBox.nextSibling) {
-            searchInputBox.parentNode.insertBefore(box, searchInputBox.nextSibling);
-          } else {
-            searchInputBox.parentNode.appendChild(box);
-          }
-        }
-
-        const count = data.items.length;
-        box.innerHTML = `
-          <div class="dsh-search-enhancer-header">
-            <span>精准 ID / 内容匹配 (${count})</span>
-            <span style="font-size:10px;color:#2563eb;">独立窗口 ↗</span>
-          </div>
-          <div class="dsh-search-enhancer-list"></div>
-        `;
-
-        const listEl = box.querySelector('.dsh-search-enhancer-list');
-
-        for (const item of data.items) {
-          const row = document.createElement('div');
-          row.className = 'dsh-search-item-row';
-          const title = (item.turns && item.turns[0] && item.turns[0].prompt)
-            ? item.turns[0].prompt
-            : item.id;
-          const cwdName = item.cwd ? item.cwd.split('/').pop() : '工作区';
-          const matchLabel = item.matchType === 'id' ? 'ID 命中' : '内容命中';
-          const snippetText = item.matchedSnippet || item.id.slice(0, 16);
-
-          row.innerHTML = `
-            <div class="dsh-search-item-meta">
-              <span class="dsh-search-item-title">${title}</span>
-              <span class="dsh-search-item-snippet">
-                <span class="dsh-search-item-badge">${matchLabel}</span>
-                ${snippetText} · ${cwdName}
-              </span>
-            </div>
-            <button class="dsh-open-window-btn" title="在新独立窗口中打开此会话">↗</button>
-          `;
-
-          // 点击整行：调用官方 sessions.open(id) 在当前窗口打开！
-          row.addEventListener('click', (e) => {
-            const btn = e.target.closest('.dsh-open-window-btn');
-            if (btn) {
-              e.preventDefault();
-              e.stopPropagation();
-              openInNewWindow(`/?session=${item.id}`);
-            } else {
-              try {
-                if (typeof ctx.sessions?.open === 'function') {
-                  ctx.sessions.open(item.id);
-                  removeSearchEnhancerBox();
-                } else {
-                  window.location.href = `/?session=${item.id}`;
-                }
-              } catch {
-                window.location.href = `/?session=${item.id}`;
-              }
+        // 提取该行的 sessionId
+        let sid = row.getAttribute('data-session-id') || row.dataset?.sessionId || row.getAttribute('id')
+        if (!sid || !sid.startsWith('session-')) {
+          const text = (row.textContent || '').trim()
+          for (const id of snap.ids) {
+            const item = snap.byId[id]
+            if (item && (item.title === text || text.includes(item.title) || (item.displayTitle && text.includes(item.displayTitle)))) {
+              sid = id
+              break
             }
-          });
-
-          listEl.appendChild(row);
+          }
         }
-      } catch (err) {
-        console.warn('[dsh-session-navigator] Search render error:', err);
+
+        if (!sid) continue
+
+        const arrow = document.createElement('span')
+        arrow.className = 'dsh-nav-tree-item-arrow'
+        arrow.textContent = '↗'
+        arrow.title = '在新窗口打开此会话'
+
+        const triggerNewWin = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          openInNewWindow(sid)
+        }
+        arrow.addEventListener('pointerdown', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        })
+        arrow.addEventListener('pointerup', triggerNewWin)
+        arrow.addEventListener('click', triggerNewWin)
+
+        row.appendChild(arrow)
       }
+    }
+
+    function navFromElement(el) {
+      if (!(el instanceof Element)) return null
+      if (el.closest('.dsh-nav-id-main')) return null
+      const host = el.closest('[data-dsh-session], .dsh-session-anchor-capsule, a[href], code')
+      if (!host) return null
+      if (host.closest('.dsh-navx-root, .dsh-navx-panel, .dsh-navx-results')) return null
+      const fromData = normalizeSessionId(host.getAttribute('data-dsh-session') || '')
+      const fromHref = parseNavFromUrl(host.getAttribute('href') || host.href || '')
+      const trimmed = (host.textContent || '').trim()
+      const fromText = host.tagName === 'CODE' && trimmed.length <= 120 ? normalizeSessionId(host.getAttribute('data-dsh-session') || trimmed) : null
+      const sessionId = fromData || fromHref?.sessionId || fromText
+      if (!sessionId) return null
+      const turn =
+        parseTurn(host.getAttribute('data-dsh-turn')) ||
+        fromHref?.turn ||
+        extractTurnFromText(host.closest('[data-chat-turn], p, li, div')?.textContent || '')
+      return { sessionId, turn }
+    }
+
+    function rewriteSessionAnchors(root) {
+      const scope = root || document
+      for (const a of scope.querySelectorAll('a[href]')) {
+        if (a.classList.contains('dsh-nav-new-window') || a.classList.contains('dsh-nav-tree-item-arrow')) continue
+        const nav = parseNavFromUrl(a.getAttribute('href') || '') || parseNavFromUrl(a.href)
+        if (!nav) continue
+        const next = `/?session=${encodeURIComponent(nav.sessionId)}${nav.turn ? `&turn=${nav.turn}` : ''}`
+        if (a.getAttribute('href') !== next) a.setAttribute('href', next)
+        a.classList.add('dsh-session-anchor-capsule')
+        a.dataset.dshSession = nav.sessionId
+        if (nav.turn) a.dataset.dshTurn = String(nav.turn)
+        const title = sessionTitleOf(nav.sessionId)
+        const label = formatCapsuleLabel(title, nav.sessionId, nav.turn)
+        if ((a.textContent || '').trim() === nav.sessionId || a.dataset.dshNavLabel !== label) {
+          a.textContent = label
+          a.dataset.dshNavLabel = label
+        }
+        a.setAttribute('title', `${title || nav.sessionId}\n${nav.sessionId}\n在新窗口打开`)
+      }
+    }
+
+    function markSessionCode(root) {
+      const scope = root || document
+      for (const el of scope.querySelectorAll('code')) {
+        if (el.closest('pre')) continue
+        const raw = (el.getAttribute('data-dsh-session') || el.textContent || '').trim()
+        const id = normalizeSessionId(raw)
+        if (!id) continue
+        if ((el.textContent || '').trim().length > 120 && !el.dataset.dshSession) continue
+        const title = sessionTitleOf(id)
+        const turn = extractTurnFromText(el.parentElement?.textContent || '') || parseTurn(el.getAttribute('data-dsh-turn'))
+        const label = formatCapsuleLabel(title, id, turn)
+        el.classList.add('dsh-session-anchor-capsule')
+        el.dataset.dshSession = id
+        if (turn) el.dataset.dshTurn = String(turn)
+        if (el.dataset.dshNavLabel !== label) {
+          el.textContent = label
+          el.dataset.dshNavLabel = label
+        }
+        el.setAttribute('title', `${title || id}\n${id}\n在新窗口打开`)
+      }
+    }
+
+    function setupClickRouter() {
+      document.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return
+        if (event.target.closest('.dsh-nav-id-main')) return
+        const nav = navFromElement(event.target)
+        if (!nav) return
+        if (event.target.closest('.dsh-navx-root, .dsh-navx-panel')) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        openInNewWindow(nav.sessionId, nav.turn)
+      }, true)
+      document.addEventListener('input', (event) => {
+        if (!isOfficialSearchInput(event.target)) return
+        renderInstantIdHits(event.target.value)
+      }, true)
+    }
+
+    function handleDeepLinkStartup() {
+      const nav = bootNav || captureBootNavNow()
+      if (!nav) return
+      try { sessionStorage.removeItem('dsh-nav-boot') } catch { /* ignore */ }
+      openSessionInThisWindow(nav.sessionId, nav.turn)
+    }
+
+    function enhanceDom() {
+      removeStrayOverlay()
+      rewriteSessionAnchors(document)
+      markSessionCode(document)
+      injectArrowsToOfficialSearchResults()
+      const input = findOfficialSearchInput()
+      if (input) renderInstantIdHits(input.value)
     }
 
     function apply(ctx) {
-      injectStyles();
-      setupLinkInterceptor();
-      enhanceSearchUI(ctx);
-      handleDeepLinkStartup(ctx);
-
+      bootNav = parseNavFromUrl(window.location.href)
+      injectStyles()
+      removeStrayOverlay()
+      sessionsRef = ctx.sessions || (typeof ctx.get === 'function' ? ctx.get('sessions') : null)
+      if (!sessionsRef) {
+        console.warn('[dsh-session-navigator] sessions service missing')
+        return () => {}
+      }
+      setupClickRouter()
+      handleDeepLinkStartup()
+      enhanceDom()
+      let enhanceTimer = null
+      const observer = new MutationObserver(() => {
+        if (enhanceTimer) return
+        enhanceTimer = setTimeout(() => {
+          enhanceTimer = null
+          enhanceDom()
+        }, 80)
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
       return () => {
-        const style = document.getElementById('dsh-session-navigator-styles');
-        if (style) style.remove();
-        removeSearchEnhancerBox();
-      };
+        observer.disconnect()
+        if (enhanceTimer) clearTimeout(enhanceTimer)
+        document.getElementById('dsh-session-navigator-styles')?.remove()
+        document.getElementById('dsh-nav-id-hits')?.remove()
+        removeStrayOverlay()
+      }
     }
 
-    // 声明正确的 Cordis 注入服务
-    const inject = ['sessions'];
-
-    module.exports.apply = apply;
-    module.exports.inject = inject;
-    return module.exports;
+    module.exports.apply = apply
+    module.exports.inject = ['sessions']
+    return module.exports
   },
-});
+})
