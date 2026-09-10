@@ -168,7 +168,7 @@ export function apply(ctx, config = {}) {
         sendJson(res, 200, {
           ok: true,
           name: 'dsh-session-navigator',
-          version: '0.2.0',
+          version: '0.3.1',
           dbAvailable: Boolean(dbPath),
           dbPath,
         })

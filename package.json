@@ -1,8 +1,8 @@
 {
   "name": "dsh-session-navigator",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "private": true,
-  "description": "增强左上角官方「搜索会话」（Session ID 命中 + 新窗口打开），并让聊天里的 session id 可在新窗口直达指定会话与轮次。不劫持 Codex Timeline 搜索。",
+  "description": "增强左上角官方「搜索会话」（Session ID 命中 + 新窗口打开），侧栏会话 ⋯ 菜单可复制规范 @会话引用，粘贴到输入框会变成官方会话 chip。不劫持 Codex Timeline 搜索。",
   "type": "module",
   "main": "./index.js",
   "exports": {
@@ -33,7 +33,8 @@
     },
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-api-session-controller"
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation"
       ],
       "platform": "web"
     }
