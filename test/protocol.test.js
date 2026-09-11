@@ -23,7 +23,21 @@ import {
   parseTurn,
   popupNeedsUrlAssign,
   sessionWindowName,
+  INTERNAL_NAV_ATTR,
+  isInternalNavElement,
+  isOfficialNewSessionElement,
+  CURRENT_SELECTION_KEY,
+  sessionDeepLinkHref,
+  nextSelectionWrite,
+  DEEP_LINK_ACTION,
+  nextDeepLinkAction,
 } from '../protocol.js'
+import {
+  buildChromeTabScript,
+  escapeAppleScriptString,
+  isAllowedChromeTabUrl,
+  isLoopbackAddress,
+} from '../chrome-tab.js'
 
 const ID = 'session-75271ba9-0162-4071-950e-28c4f96fc35f'
 const SHORT = 'session-56c6db0b-f8ae-4bbb-ba69-2b081720537c'
@@ -236,5 +250,129 @@ describe('popup window targeting', () => {
     assert.equal(isInWindowSessionRowClick({ inTreeItem: true, modifiedClick: true }), false)
     assert.equal(isInWindowSessionRowClick({ inTreeItem: true, inNewWindowControl: true }), false)
     assert.equal(isInWindowSessionRowClick({ inTreeItem: false }), false)
+  })
+  it('identifies internal navigation probe to prevent click recursion', () => {
+    assert.equal(INTERNAL_NAV_ATTR, 'data-dsh-nav-internal')
+    const fakeEl = {
+      getAttribute: (name) => (name === INTERNAL_NAV_ATTR ? 'true' : null),
+      hasAttribute: (name) => name === INTERNAL_NAV_ATTR,
+    }
+    assert.equal(isInternalNavElement(fakeEl), true)
+    const normalEl = {
+      getAttribute: () => null,
+      hasAttribute: () => false,
+    }
+    assert.equal(isInternalNavElement(normalEl), false)
+  })
+  it('guards official new session button against click router takeover', () => {
+    const newSessionEl = {
+      closest: (sel) => sel.includes('新建会话') || sel.includes('hHd-Xa_newSession'),
+    }
+    assert.equal(isOfficialNewSessionElement(newSessionEl), true)
+    const ordinaryEl = {
+      closest: () => null,
+    }
+    assert.equal(isOfficialNewSessionElement(ordinaryEl), false)
+  })
+})
+
+describe('native deep-link anchors', () => {
+  it('builds a relative href that keeps the current origin', () => {
+    assert.equal(sessionDeepLinkHref(ID), `/?session=${ID}`)
+    assert.equal(sessionDeepLinkHref(ID, 3), `/?session=${ID}&turn=3`)
+    assert.equal(sessionDeepLinkHref('nope'), null)
+    assert.equal(sessionDeepLinkHref(ID, 0), `/?session=${ID}`)
+  })
+})
+
+describe('persisted current-session priming', () => {
+  it('uses the official shared key', () => {
+    assert.equal(CURRENT_SELECTION_KEY, 'dsh.sessions.current')
+  })
+  it('writes the target when the stored session differs or is unusable', () => {
+    assert.equal(nextSelectionWrite(null, ID), JSON.stringify({ sessionId: ID }))
+    assert.equal(nextSelectionWrite('{}', ID), JSON.stringify({ sessionId: ID }))
+    assert.equal(nextSelectionWrite('not json', ID), JSON.stringify({ sessionId: ID }))
+    assert.equal(nextSelectionWrite(JSON.stringify({ sessionId: SHORT }), ID), JSON.stringify({ sessionId: ID }))
+  })
+  it('does not rewrite when the target is already stored', () => {
+    assert.equal(nextSelectionWrite(JSON.stringify({ sessionId: ID }), ID), null)
+    assert.equal(nextSelectionWrite(JSON.stringify({ sessionId: ID }), 'garbage'), null)
+  })
+})
+
+describe('deep link action policy', () => {
+  const base = { target: ID, startedAt: 0, settleMs: 20_000, maxWaitMs: 900_000 }
+
+  it('never gives up while the session list is still on its way', () => {
+    // 回归：老实现 8 秒就放弃，而本机 400+ 会话时列表可能几分钟才到。
+    assert.equal(nextDeepLinkAction({ ...base, current: SHORT, listed: false, now: 8_000 }), DEEP_LINK_ACTION.WAIT)
+    assert.equal(nextDeepLinkAction({ ...base, current: SHORT, listed: false, now: 360_000 }), DEEP_LINK_ACTION.WAIT)
+    assert.equal(nextDeepLinkAction({ ...base, current: undefined, listed: false, now: 100 }), DEEP_LINK_ACTION.WAIT)
+  })
+
+  it('selects the target as soon as it is listed', () => {
+    assert.equal(
+      nextDeepLinkAction({ ...base, current: undefined, listed: true, now: 100 }),
+      DEEP_LINK_ACTION.OPEN,
+    )
+    assert.equal(
+      nextDeepLinkAction({ ...base, current: SHORT, listed: true, listReadyAt: 100, now: 5_000 }),
+      DEEP_LINK_ACTION.OPEN,
+    )
+  })
+
+  it('stops once the target is current', () => {
+    assert.equal(nextDeepLinkAction({ ...base, current: ID, listed: true, now: 10 }), DEEP_LINK_ACTION.DONE)
+  })
+
+  it('yields to a user choice only after the settle window', () => {
+    assert.equal(
+      nextDeepLinkAction({ ...base, current: SHORT, listed: true, listReadyAt: 0, now: 60_000 }),
+      DEEP_LINK_ACTION.YIELD,
+    )
+    // 列表已就绪但官方还停在空状态：仍然要抢回来
+    assert.equal(
+      nextDeepLinkAction({ ...base, current: undefined, listed: true, listReadyAt: 0, now: 60_000 }),
+      DEEP_LINK_ACTION.OPEN,
+    )
+    // 结算窗口内即使已有别的 current 也继续抢（压过官方启动导航）
+    assert.equal(
+      nextDeepLinkAction({ ...base, current: SHORT, listed: true, listReadyAt: 59_000, now: 60_000 }),
+      DEEP_LINK_ACTION.OPEN,
+    )
+  })
+
+  it('times out only past the budget', () => {
+    assert.equal(
+      nextDeepLinkAction({ ...base, current: SHORT, listed: false, now: 900_001 }),
+      DEEP_LINK_ACTION.TIMEOUT,
+    )
+  })
+})
+
+describe('chrome tab open guard', () => {
+  it('accepts only loopback DSH session deep links', () => {
+    assert.equal(isAllowedChromeTabUrl(`http://localhost:3080/?session=${ID}`), true)
+    assert.equal(isAllowedChromeTabUrl(`http://127.0.0.1:3080/?session=${ID}&turn=3`), true)
+    assert.equal(isAllowedChromeTabUrl(`http://localhost:3080/?session=${ID}&evil=1`), false)
+    assert.equal(isAllowedChromeTabUrl('http://example.com/?session=' + ID), false)
+    assert.equal(isAllowedChromeTabUrl('http://localhost:3080/settings'), false)
+    assert.equal(isAllowedChromeTabUrl('javascript:alert(1)'), false)
+  })
+
+  it('escapes AppleScript strings and targets real Chrome', () => {
+    assert.equal(escapeAppleScriptString('http://x/"y'), 'http://x/\\"y')
+    const script = buildChromeTabScript(`http://127.0.0.1:3080/?session=${ID}`)
+    assert.equal(script.includes('com.google.Chrome'), true)
+    assert.equal(script.includes('mac工作台'), false)
+    assert.equal(script.includes(`URL:"http://127.0.0.1:3080/?session=${ID}"`), true)
+  })
+
+  it('treats ipv4 and ipv6 loopback as local', () => {
+    assert.equal(isLoopbackAddress('127.0.0.1'), true)
+    assert.equal(isLoopbackAddress('::1'), true)
+    assert.equal(isLoopbackAddress('::ffff:127.0.0.1'), true)
+    assert.equal(isLoopbackAddress('192.168.1.2'), false)
   })
 })

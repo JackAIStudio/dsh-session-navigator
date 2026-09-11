@@ -329,3 +329,110 @@ export function isInWindowSessionRowClick({ inTreeItem, inNewWindowControl, modi
   if (modifiedClick || inNewWindowControl) return false
   return Boolean(inTreeItem)
 }
+
+export const INTERNAL_NAV_ATTR = 'data-dsh-nav-internal'
+
+export function isInternalNavElement(el) {
+  if (!el || typeof el.getAttribute !== 'function') return false
+  return el.getAttribute(INTERNAL_NAV_ATTR) === 'true' || Boolean(el.hasAttribute?.(INTERNAL_NAV_ATTR))
+}
+
+export function isOfficialNewSessionElement(el) {
+  if (!el) return false
+  if (typeof el.closest === 'function') {
+    return Boolean(el.closest('button.hHd-Xa_newSession, [aria-label="新建会话"], [aria-label="New session"]'))
+  }
+  const label = typeof el.getAttribute === 'function' ? el.getAttribute('aria-label') : ''
+  const cls = typeof el.getAttribute === 'function' ? el.getAttribute('class') : ''
+  return /新建会话|New session/i.test(label || '') || /hHd-Xa_newSession/.test(cls || '')
+}
+
+/** Official persisted "current session" cell. Shared by every window of one origin. */
+export const CURRENT_SELECTION_KEY = 'dsh.sessions.current'
+
+/**
+ * Relative deep-link href for one session (and optional turn).
+ * @returns the href, or null when the id is not a canonical session id.
+ */
+export function sessionDeepLinkHref(sessionId, turn = null) {
+  const id = normalizeSessionId(sessionId)
+  if (!id) return null
+  const target = parseTurn(turn)
+  return `/?session=${encodeURIComponent(id)}${target ? `&turn=${target}` : ''}`
+}
+
+/**
+ * Decide what (if anything) to write into the persisted current-session cell.
+ *
+ * Opening a window natively cannot run script first, so the opener primes this
+ * cell on `pointerdown`: the new window then restores the target on boot instead
+ * of whatever session the previous window left behind.
+ *
+ * @param rawJson - current stored value (may be absent or malformed).
+ * @param sessionId - session the new window should land on.
+ * @returns the JSON to write, or null when the stored value already matches.
+ */
+export function nextSelectionWrite(rawJson, sessionId) {
+  const id = normalizeSessionId(sessionId)
+  if (!id) return null
+  let parsed = null
+  try {
+    parsed = rawJson ? JSON.parse(rawJson) : null
+  } catch {
+    parsed = null
+  }
+  if (parsed && typeof parsed === 'object' && parsed.sessionId === id) return null
+  return JSON.stringify({ sessionId: id })
+}
+
+/** Deep-link actions, in the order the engine evaluates them. */
+export const DEEP_LINK_ACTION = {
+  /** The target is already current: jump to the turn and stop. */
+  DONE: 'done',
+  /** The list has not arrived yet, or the target is not listed: keep waiting. */
+  WAIT: 'wait',
+  /** The target is listed but not current: select it. */
+  OPEN: 'open',
+  /** Another session is current well after the list settled: the user chose it. */
+  YIELD: 'yield',
+  /** The wait budget is exhausted. */
+  TIMEOUT: 'timeout',
+}
+
+/**
+ * Decide the next deep-link step from observed session-list state.
+ *
+ * The regression this encodes: a fresh window in a home with hundreds of
+ * sessions can take minutes to receive `session.list`. An 8-second retry window
+ * silently gave up long before the list existed, so the window settled on
+ * whatever session the shared persisted cell held — the "clicked a link, got a
+ * blank/other window" report. Waiting is therefore governed by a budget, never
+ * by a short retry count.
+ *
+ * @param state - observed list state plus the engine's clock.
+ * @returns one of {@link DEEP_LINK_ACTION}.
+ */
+export function nextDeepLinkAction(state = {}) {
+  const {
+    target,
+    current,
+    listed,
+    listReadyAt = null,
+    startedAt = 0,
+    now = 0,
+    settleMs = 0,
+    maxWaitMs = 0,
+  } = state
+  const id = normalizeSessionId(target)
+  if (!id) return DEEP_LINK_ACTION.DONE
+  if (current === id) return DEEP_LINK_ACTION.DONE
+  if (!listed) {
+    return now - startedAt > maxWaitMs ? DEEP_LINK_ACTION.TIMEOUT : DEEP_LINK_ACTION.WAIT
+  }
+  const readyAt = listReadyAt === null || listReadyAt === undefined ? now : listReadyAt
+  if (now - readyAt > settleMs && current !== undefined && current !== null) {
+    return DEEP_LINK_ACTION.YIELD
+  }
+  return DEEP_LINK_ACTION.OPEN
+}
+
