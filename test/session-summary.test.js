@@ -36,7 +36,7 @@ describe('session id guard', () => {
 describe('readSessionSummary', () => {
   it('projects one cached session into a list summary', async () => {
     writeRecord(SESSION_ID, {
-      identity: { createdAt: 1789107558760, cwd: '/Users/jkw/Documents/dshspace/days/2026-09-11' },
+      identity: { createdAt: 1789107558760, cwd: '/tmp/dsh-workspace/demo-project' },
       rows: {
         title: { ver: 1, seq: 962, val: 'DeepSeek联网搜索机制视频构思' },
         sessionListMetadata: { ver: 1, seq: 962, val: { blank: false, lastPromptAt: 1789111935983 } },
@@ -50,7 +50,7 @@ describe('readSessionSummary', () => {
       updatedAt: 1789111935983,
       running: false,
       blank: false,
-      cwd: '/Users/jkw/Documents/dshspace/days/2026-09-11',
+      cwd: '/tmp/dsh-workspace/demo-project',
       projections: { asOfSeq: 962, values: { title: 'DeepSeek联网搜索机制视频构思' } },
     })
   })
