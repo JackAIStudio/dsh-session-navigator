@@ -109,12 +109,48 @@ export function mergeIdHits(contentItems, idHits, limit = 20) {
   return out.slice(0, Math.max(1, limit))
 }
 
-export function formatCapsuleLabel(title, sessionId, turn) {
-  const name = String(title || '').trim()
+/** Visible chip text: session title only, matching the official @ mention chip. */
+export function formatCapsuleLabel(title, sessionId, _turn) {
   const id = normalizeSessionId(sessionId) || String(sessionId || '').trim()
-  const head = name && name !== id ? name : id
-  const turnLabel = parseTurn(turn) ? ` · 第 ${parseTurn(turn)} 轮` : ''
-  return `${head}${turnLabel}`
+  const name = String(title || '').trim()
+  if (name && name !== id) return name
+  return id
+}
+
+/** Tooltip carries turn, raw id, and the new-window hint. */
+export function formatCapsuleTooltip(title, sessionId, turn) {
+  const id = normalizeSessionId(sessionId) || String(sessionId || '').trim()
+  const name = formatCapsuleLabel(title, sessionId, turn)
+  const turnN = parseTurn(turn)
+  const lines = []
+  if (name) lines.push(name)
+  if (turnN) lines.push(`第 ${turnN} 轮`)
+  if (id && id !== name) lines.push(id)
+  lines.push('在新窗口打开')
+  return lines.join('\n')
+}
+
+const LEAD_IN_HINT_RE = /查看会话|查看對話|Open session/i
+
+/**
+ * Skill used to emit a "查看会话：标题 · 第 N 轮" line above the session id.
+ * Once the chip already shows that title, the extra line is noise.
+ */
+export function isRedundantSessionLeadIn(text, { title, sessionId, turn } = {}) {
+  const raw = String(text || '').replace(/\s+/g, ' ').trim()
+  if (!raw || !LEAD_IN_HINT_RE.test(raw)) return false
+  const id = normalizeSessionId(sessionId) || ''
+  const name = String(title || '').trim()
+  if (!name || name === id) return false
+
+  let rest = raw.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, ' ')
+  rest = rest.replace(/(?:查看会话|查看對話|Open session)\s*[：:]?/gi, ' ')
+  rest = rest.split(name).join(' ')
+  if (id) rest = rest.split(id).join(' ')
+  rest = rest.replace(/第\s*\d+\s*(?:轮|回合)/g, ' ')
+  rest = rest.replace(/\bturn[\s:#_-]*\d+\b/gi, ' ')
+  rest = rest.replace(/[·•.,，。:：;；!！?？↗~\-_/\\|'"“”‘’()[\]【】（）\s]/g, '')
+  return rest.length === 0
 }
 
 /** Avoid `A, B > child` which only qualifies the last selector. */
@@ -293,6 +329,82 @@ export function isSessionActionsMenuText(text) {
     && (value.includes('归档会话') || value.includes('Archive session'))
 }
 
+export function isSessionActionsButton(el) {
+  if (!el || typeof el.getAttribute !== 'function') return false
+  const label = el.getAttribute('aria-label') || ''
+  if (/工作区|Workspace actions/.test(label)) return false
+  return /会话.*的操作$/.test(label) || /^Session actions for /.test(label)
+}
+
+/**
+ * Official Menu portals `role="menu"` → viewport → itemWrap → menuitem.
+ * Insert against the viewport using the wrap as the reference node; inserting
+ * the menuitem as a direct child of `role="menu"` throws NotFoundError.
+ */
+export function sessionMenuItemHost(menuItem) {
+  if (!menuItem || typeof menuItem !== 'object') return null
+  const wrap = menuItem.parentElement
+  if (!wrap) return null
+  const host = wrap.parentElement
+  if (!host) return null
+  return { host, before: wrap }
+}
+
+export function sessionCopyMenuLabels(locale) {
+  const en = String(locale || '').toLowerCase().startsWith('en')
+  if (en) {
+    return {
+      id: 'Copy session ID',
+      mention: 'Copy session mention',
+      copiedId: 'Copied session ID',
+      copiedMention: 'Copied session mention',
+      failed: 'Copy failed',
+    }
+  }
+  return {
+    id: '复制会话 ID',
+    mention: '复制会话引用',
+    copiedId: '已复制会话 ID',
+    copiedMention: '已复制会话引用',
+    failed: '复制失败',
+  }
+}
+
+/** True when clipboard text is exactly one session mention (optional trim). */
+export function parseExclusiveSessionMention(text) {
+  const trimmed = String(text ?? '').trim()
+  if (!trimmed) return null
+  const parsed = parseSessionReferenceMentions(trimmed)
+  if (parsed.length !== 1) return null
+  if (parsed[0].match !== trimmed) return null
+  return parsed[0]
+}
+
+/**
+ * First plain (not-yet-chip) session mention in a composer snapshot, mapped
+ * onto detect coordinates for `insertReference`.
+ */
+export function nextSessionMentionHydration(snapshot) {
+  if (!snapshot || (snapshot.phase !== 'plain' && snapshot.phase !== 'claimed')) return null
+  const draft = typeof snapshot.draft === 'string' ? snapshot.draft : ''
+  const occurrences = snapshot.occurrences || []
+  const plains = findPlainSessionMentions(draft, occurrences)
+  if (plains.length === 0) return null
+  const item = plains[0]
+  const start = clipboardOffsetToDetect(occurrences, item.index)
+  const end = clipboardOffsetToDetect(occurrences, item.index + item.match.length)
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+  if (typeof snapshot.draftRev !== 'number') return null
+  return {
+    sessionId: item.sessionId,
+    label: item.label,
+    mention: item.mention,
+    start,
+    end,
+    draftRev: snapshot.draftRev,
+  }
+}
+
 /** Stable window name so the same session reuses one popup instead of spawning `_blank` copies. */
 export function sessionWindowName(sessionId) {
   const id = normalizeSessionId(sessionId)
@@ -434,5 +546,117 @@ export function nextDeepLinkAction(state = {}) {
     return DEEP_LINK_ACTION.YIELD
   }
   return DEEP_LINK_ACTION.OPEN
+}
+
+export const PIN_DOCUMENT_VERSION = 1
+export const MAX_PINNED_SESSIONS = 40
+
+function ownValue(object, key) {
+  if (!object || typeof object !== 'object') return undefined
+  if (!Object.prototype.hasOwnProperty.call(object, key)) return undefined
+  return object[key]
+}
+
+function asPinRecord(value) {
+  if (typeof value === 'string') {
+    const sessionId = normalizeSessionId(value)
+    return sessionId ? { sessionId, pinnedAt: 0 } : null
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const sessionId = normalizeSessionId(ownValue(value, 'sessionId') || ownValue(value, 'id'))
+  if (!sessionId) return null
+  const pinnedAt = Number(ownValue(value, 'pinnedAt'))
+  return {
+    sessionId,
+    pinnedAt: Number.isFinite(pinnedAt) && pinnedAt > 0 ? pinnedAt : 0,
+  }
+}
+
+/** Coerce unknown JSON into `{ version, pins: [{ sessionId, pinnedAt }] }`. Newest pin first. */
+export function normalizePinDocument(raw) {
+  const listed = Array.isArray(raw) ? raw : ownValue(raw, 'pins')
+  const source = Array.isArray(listed) ? listed : []
+  const pins = []
+  const seen = new Set()
+  for (const item of source) {
+    const record = asPinRecord(item)
+    if (!record || seen.has(record.sessionId)) continue
+    seen.add(record.sessionId)
+    pins.push(record)
+    if (pins.length >= MAX_PINNED_SESSIONS) break
+  }
+  return { version: PIN_DOCUMENT_VERSION, pins }
+}
+
+export function isSessionPinned(document, sessionId) {
+  const id = normalizeSessionId(sessionId)
+  if (!id) return false
+  return normalizePinDocument(document).pins.some((item) => item.sessionId === id)
+}
+
+/**
+ * Pin (move to front) or unpin a session. Pinning an existing id refreshes
+ * pinnedAt and puts it first. Unknown / invalid ids are rejected.
+ */
+export function togglePinnedSession(document, sessionId, pinned, now = Date.now()) {
+  const id = normalizeSessionId(sessionId)
+  const current = normalizePinDocument(document)
+  if (!id) return { ok: false, error: 'invalid session id', document: current, pinned: false }
+  const nextPins = current.pins.filter((item) => item.sessionId !== id)
+  if (pinned) {
+    const at = Number(now)
+    nextPins.unshift({
+      sessionId: id,
+      pinnedAt: Number.isFinite(at) && at > 0 ? at : Date.now(),
+    })
+    if (nextPins.length > MAX_PINNED_SESSIONS) nextPins.length = MAX_PINNED_SESSIONS
+  }
+  return {
+    ok: true,
+    document: { version: PIN_DOCUMENT_VERSION, pins: nextPins },
+    pinned: pinned === true,
+  }
+}
+
+export function sessionPinMenuLabels(locale) {
+  const en = String(locale || '').toLowerCase().startsWith('en')
+  if (en) {
+    return {
+      pin: 'Pin session',
+      unpin: 'Unpin session',
+      group: 'Pinned',
+      pinnedToast: 'Pinned',
+      unpinnedToast: 'Unpinned',
+      failed: 'Pin failed',
+      missing: 'Unavailable',
+    }
+  }
+  return {
+    pin: '置顶会话',
+    unpin: '取消置顶',
+    group: '置顶',
+    pinnedToast: '已置顶',
+    unpinnedToast: '已取消置顶',
+    failed: '置顶失败',
+    missing: '会话不可用',
+  }
+}
+
+export function compactRelativeTime(updatedAt, now, locale = 'zh') {
+  const t = Number(updatedAt)
+  if (!Number.isFinite(t) || t <= 0) return ''
+  const delta = Math.max(0, Number(now) - t)
+  const en = String(locale || '').toLowerCase().startsWith('en')
+  const minutes = Math.floor(delta / 60000)
+  if (minutes < 1) return en ? 'now' : '刚刚'
+  if (minutes < 60) return en ? `${minutes}m` : `${minutes}分钟`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return en ? `${hours}h` : `${hours}小时`
+  const days = Math.floor(hours / 24)
+  if (days < 30) return en ? `${days}d` : `${days}天`
+  const months = Math.floor(days / 30)
+  if (months < 12) return en ? `${months}mo` : `${months}个月`
+  const years = Math.floor(days / 365)
+  return en ? `${years}y` : `${years}年`
 }
 

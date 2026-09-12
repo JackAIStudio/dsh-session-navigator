@@ -9,11 +9,18 @@ import {
   extractTurnFromText,
   findPlainSessionMentions,
   formatCapsuleLabel,
+  formatCapsuleTooltip,
+  isRedundantSessionLeadIn,
   formatSessionReferenceMention,
   isBlankPopupHref,
   isInWindowSessionRowClick,
+  isSessionActionsButton,
   isSessionActionsMenuText,
   isSessionIdQuery,
+  nextSessionMentionHydration,
+  parseExclusiveSessionMention,
+  sessionCopyMenuLabels,
+  sessionMenuItemHost,
   isWorkspaceSessionSearchMeta,
   mergeIdHits,
   normalizeSessionId,
@@ -153,9 +160,50 @@ describe('turn parsing', () => {
 })
 
 describe('capsule label', () => {
-  it('prefers the session title over the raw id', () => {
-    assert.equal(formatCapsuleLabel('插件：会话查找', ID, 2), '插件：会话查找 · 第 2 轮')
+  it('shows only the session title on the chip face', () => {
+    assert.equal(formatCapsuleLabel('插件：会话查找', ID, 2), '插件：会话查找')
     assert.equal(formatCapsuleLabel('', ID, null), ID)
+    assert.equal(formatCapsuleLabel(ID, ID, 3), ID)
+  })
+  it('puts turn and id into the tooltip', () => {
+    assert.equal(
+      formatCapsuleTooltip('插件：会话查找', ID, 2),
+      `插件：会话查找\n第 2 轮\n${ID}\n在新窗口打开`,
+    )
+    assert.equal(formatCapsuleTooltip('', ID, null), `${ID}\n在新窗口打开`)
+  })
+  it('treats the skill lead-in line as redundant once the chip has the title', () => {
+    assert.equal(
+      isRedundantSessionLeadIn('🧭 查看会话：插件：会话查找 · 第 2 轮', {
+        title: '插件：会话查找',
+        sessionId: ID,
+        turn: 2,
+      }),
+      true,
+    )
+    assert.equal(
+      isRedundantSessionLeadIn('查看会话: 插件：会话查找 · 第 1 轮 ↗', {
+        title: '插件：会话查找',
+        sessionId: ID,
+        turn: 1,
+      }),
+      true,
+    )
+    assert.equal(
+      isRedundantSessionLeadIn('改稿规则是在这次对话里定的：查看会话：插件：会话查找', {
+        title: '插件：会话查找',
+        sessionId: ID,
+      }),
+      false,
+    )
+    assert.equal(
+      isRedundantSessionLeadIn('🧭 查看会话：插件：会话查找 · 第 2 轮', {
+        title: '',
+        sessionId: ID,
+        turn: 2,
+      }),
+      false,
+    )
   })
 })
 
@@ -223,6 +271,69 @@ describe('plain mention detection', () => {
     assert.equal(isSessionActionsMenuText('重命名分叉会话归档会话'), true)
     assert.equal(isSessionActionsMenuText('RenameFork sessionArchive session'), true)
     assert.equal(isSessionActionsMenuText('重命名删除工作区'), false)
+  })
+  it('recognizes the official session ⋯ button, not the workspace one', () => {
+    const sessionBtn = { getAttribute: () => '会话“WorkBuddy 接入海外大模型剪辑”的操作' }
+    const enBtn = { getAttribute: () => 'Session actions for Demo' }
+    const workspaceBtn = { getAttribute: () => '工作区“插件”的操作' }
+    assert.equal(isSessionActionsButton(sessionBtn), true)
+    assert.equal(isSessionActionsButton(enBtn), true)
+    assert.equal(isSessionActionsButton(workspaceBtn), false)
+    assert.equal(isSessionActionsButton(null), false)
+  })
+  it('inserts cloned items into the viewport, not onto role=menu', () => {
+    const menu = { parentElement: null }
+    const viewport = { parentElement: menu }
+    const wrap = { parentElement: viewport }
+    const item = { parentElement: wrap }
+    assert.deepEqual(sessionMenuItemHost(item), { host: viewport, before: wrap })
+    assert.equal(sessionMenuItemHost(null), null)
+  })
+})
+
+describe('session copy / paste chip', () => {
+  it('returns zh and en labels for the two ⋯ actions', () => {
+    assert.equal(sessionCopyMenuLabels('zh').id, '复制会话 ID')
+    assert.equal(sessionCopyMenuLabels('zh').mention, '复制会话引用')
+    assert.equal(sessionCopyMenuLabels('en-US').id, 'Copy session ID')
+    assert.equal(sessionCopyMenuLabels('en').mention, 'Copy session mention')
+  })
+  it('accepts a clipboard that is exactly one mention', () => {
+    const mention = formatSessionReferenceMention(ID, '成片 v4.1')
+    assert.equal(parseExclusiveSessionMention(`  ${mention}  `).sessionId, ID)
+    assert.equal(parseExclusiveSessionMention(`请看 ${mention}`), null)
+    assert.equal(parseExclusiveSessionMention(ID), null)
+  })
+  it('plans insertReference over the first plain mention', () => {
+    const mention = formatSessionReferenceMention(ID, '成片 v4.1')
+    const draft = `看 ${mention} 好`
+    const plan = nextSessionMentionHydration({
+      phase: 'plain',
+      draft,
+      occurrences: [],
+      draftRev: 4,
+    })
+    assert.equal(plan.sessionId, ID)
+    assert.equal(plan.mention, mention)
+    assert.equal(plan.start, draft.indexOf(mention))
+    assert.equal(plan.end, draft.indexOf(mention) + mention.length)
+    assert.equal(plan.draftRev, 4)
+  })
+  it('skips mentions that are already chips and refuses busy phases', () => {
+    const mention = formatSessionReferenceMention(ID, '标题')
+    const covered = nextSessionMentionHydration({
+      phase: 'plain',
+      draft: mention,
+      occurrences: [{ offset: 0, length: mention.length }],
+      draftRev: 1,
+    })
+    assert.equal(covered, null)
+    assert.equal(nextSessionMentionHydration({
+      phase: 'submitting',
+      draft: mention,
+      occurrences: [],
+      draftRev: 1,
+    }), null)
   })
 })
 

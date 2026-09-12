@@ -13,13 +13,20 @@ import {
   isSessionId,
   readSessionSummary,
 } from './session-summary.js'
+import {
+  PIN_ROUTE,
+  PINS_ROUTE,
+  applyPinChange,
+  defaultPinsPath,
+  readPinsDocument,
+} from './pins.js'
 
 export const name = 'dsh-session-navigator'
 export const inject = ['webServer']
 
 const SEARCH_ROUTE = '/dsh-session-navigator/search'
 const INFO_ROUTE = '/dsh-session-navigator/info'
-const VERSION = '0.4.1'
+const VERSION = '0.4.4'
 const BODY_LIMIT = 2048
 
 function sendJson(res, statusCode, value) {
@@ -192,6 +199,15 @@ function querySessions(db, queryText, limit = 20) {
 export function apply(ctx, config = {}) {
   const dbPath = resolveDbPath(config)
   const summaryCacheDir = resolveSummaryCacheDir(config)
+  const pinsPath = typeof config.pinsPath === 'string' && config.pinsPath
+    ? config.pinsPath
+    : defaultPinsPath()
+  let pinWrite = Promise.resolve()
+  const withPinLock = (fn) => {
+    const run = pinWrite.then(fn, fn)
+    pinWrite = run.then(() => {}, () => {})
+    return run
+  }
 
   ctx.inject(['webServer'], (web) => {
     const webServer = web.get('webServer')
@@ -247,9 +263,70 @@ export function apply(ctx, config = {}) {
           dbPath,
           summaryCacheAvailable: Boolean(summaryCacheDir),
           summaryCacheDir,
+          pinsPath,
         })
       },
     }), 'dsh-session-navigator/info')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: PINS_ROUTE,
+      handler: async (req, res) => {
+        if (req.method !== 'GET') {
+          res.setHeader('allow', 'GET')
+          sendJson(res, 405, { ok: false, error: 'method not allowed' })
+          return
+        }
+        try {
+          const document = await readPinsDocument(pinsPath)
+          sendJson(res, 200, { ok: true, document })
+        } catch (error) {
+          sendJson(res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      },
+    }), 'dsh-session-navigator/pins')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: PIN_ROUTE,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.setHeader('allow', 'POST')
+          sendJson(res, 405, { ok: false, error: 'method not allowed' })
+          return
+        }
+        try {
+          const body = await readJsonBody(req)
+          const sessionId = typeof body?.sessionId === 'string' ? body.sessionId : ''
+          if (typeof body?.pinned !== 'boolean') {
+            sendJson(res, 400, { ok: false, error: 'pinned must be a boolean' })
+            return
+          }
+          const result = await withPinLock(() => applyPinChange(pinsPath, sessionId, body.pinned))
+          if (!result.ok) {
+            sendJson(res, 400, { ok: false, error: result.error || 'invalid session id' })
+            return
+          }
+          sendJson(res, 200, { ok: true, document: result.document, pinned: result.pinned })
+        } catch (error) {
+          if (error && error.code === 'too-large') {
+            sendJson(res, 413, { ok: false, error: 'payload too large' })
+            return
+          }
+          if (error instanceof SyntaxError) {
+            sendJson(res, 400, { ok: false, error: 'malformed json' })
+            return
+          }
+          sendJson(res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      },
+    }), 'dsh-session-navigator/pin')
 
     ctx.effect(() => webServer.register({
       kind: 'exact',

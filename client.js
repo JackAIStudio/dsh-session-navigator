@@ -5,27 +5,62 @@ window.__ModuleLoader__.load({
 
     const SESSION_ID_RE = /session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
     const CSS_STYLES = `
+      /* Official composer @ session chip (ReferenceChip): one 6px plate, bubble + title. */
+      code.dsh-session-anchor-host {
+        display: contents !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        font: inherit !important;
+        font-size: inherit !important;
+        font-family: inherit !important;
+        color: inherit !important;
+        line-height: inherit !important;
+        box-shadow: none !important;
+      }
       .dsh-session-anchor-capsule {
         display: inline-flex !important;
         align-items: center !important;
-        gap: 6px !important;
-        padding: 2px 10px !important;
+        gap: 3px !important;
+        box-sizing: border-box !important;
+        height: 22px !important;
+        max-width: 240px !important;
         margin: 0 2px !important;
-        font-size: 12px !important;
-        font-weight: 500 !important;
-        line-height: 1.4 !important;
-        color: #2563eb !important;
-        background: rgba(37, 99, 235, 0.08) !important;
-        border: 1px solid rgba(37, 99, 235, 0.28) !important;
-        border-radius: 999px !important;
+        padding: 0 6px !important;
+        border: none !important;
+        border-radius: 6px !important;
+        background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12)) !important;
+        color: var(--dsw-alias-state-business-primary, #2563eb) !important;
+        font: inherit !important;
+        font-size: 13px !important;
+        font-weight: 400 !important;
+        font-family: var(--dsw-font-family, inherit) !important;
+        line-height: 22px !important;
         text-decoration: none !important;
         cursor: pointer !important;
-        vertical-align: baseline !important;
-        max-width: 100%;
+        user-select: none !important;
+        vertical-align: bottom !important;
       }
       .dsh-session-anchor-capsule:hover {
-        background: rgba(37, 99, 235, 0.16) !important;
-        border-color: rgba(37, 99, 235, 0.55) !important;
+        background: var(--dsw-alias-button-ghost-active-fill, rgba(128, 128, 128, 0.18)) !important;
+      }
+      .dsh-session-anchor-icon {
+        flex: none;
+        width: 14px;
+        height: 14px;
+        display: block;
+      }
+      .dsh-session-anchor-label {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      [data-dsh-nav-lead-hidden] {
+        display: none !important;
       }
       @keyframes dshTurnPulse {
         0% { outline: 3px solid rgba(59, 130, 246, 0.9); background-color: rgba(59, 130, 246, 0.16); }
@@ -186,6 +221,94 @@ window.__ModuleLoader__.load({
         line-height: 18px;
         color: var(--dsw-alias-label-tertiary, #888);
       }
+      #dsh-nav-pin-group {
+        margin: 0 0 6px;
+        padding: 2px 0 6px;
+        border-bottom: 1px solid var(--dsw-alias-border-l2, rgba(128,128,128,0.16));
+      }
+      .dsh-nav-pin-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px 6px;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 16px;
+        color: var(--dsw-alias-label-tertiary, #888);
+        user-select: none;
+      }
+      .dsh-nav-pin-header svg {
+        width: 12px;
+        height: 12px;
+        color: var(--dsw-alias-state-business-primary, #2563eb);
+      }
+      .dsh-nav-pin-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 8px 0 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+        color: var(--dsw-alias-label-primary, inherit);
+      }
+      .dsh-nav-pin-row:hover {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.12));
+      }
+      .dsh-nav-pin-row[aria-selected="true"] {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(37,99,235,0.12));
+      }
+      .dsh-nav-pin-row.is-missing {
+        opacity: 0.55;
+      }
+      .dsh-nav-pin-row-icon {
+        flex: none;
+        width: 14px;
+        height: 14px;
+        color: var(--dsw-alias-state-business-primary, #2563eb);
+      }
+      .dsh-nav-pin-row-title {
+        flex: 1;
+        min-width: 0;
+        font-size: 13px;
+        line-height: 18px;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .dsh-nav-pin-row-time {
+        flex: none;
+        font-size: 11px;
+        line-height: 16px;
+        color: var(--dsw-alias-label-tertiary, #888);
+      }
+      .dsh-nav-pin-row-unpin {
+        flex: none;
+        width: 22px;
+        height: 22px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--dsw-alias-label-tertiary, #888);
+        cursor: pointer;
+        opacity: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dsh-nav-pin-row:hover .dsh-nav-pin-row-unpin,
+      .dsh-nav-pin-row-unpin:focus {
+        opacity: 1;
+      }
+      .dsh-nav-pin-row-unpin:hover {
+        background: var(--dsw-alias-interactive-bg-hover, rgba(128,128,128,0.18));
+        color: var(--dsw-alias-label-primary, #111);
+      }
+      [role="treeitem"][data-dsh-pinned="true"] {
+        box-shadow: inset 2px 0 0 var(--dsw-alias-state-business-primary, #2563eb);
+      }
     `
 
     let bootNav = captureBootNavNow()
@@ -201,7 +324,17 @@ window.__ModuleLoader__.load({
     let deepLinkHint = null
     const SESSION_REFERENCE_SCHEME = 'dsh-session:'
     const SESSION_MENTION_RE = /@\[((?:\\.|[^\\\]])*)\]\((dsh-session:[A-Za-z0-9_-]+)\)|(dsh-session:[A-Za-z0-9_-]+)/gu
-    const COPY_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M3.5 11H3a1 1 0 0 1-1-1V3.5A1.5 1.5 0 0 1 3.5 2h6.5a1 1 0 0 1 1 1v.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const COPY_ID_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M3.5 11H3a1 1 0 0 1-1-1V3.5A1.5 1.5 0 0 1 3.5 2h6.5a1 1 0 0 1 1 1v.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const COPY_MENTION_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.25" stroke="currentColor" stroke-width="1.25"/><path d="M10.2 8.15c0 1.15-.84 1.85-1.95 1.85-.46 0-.86-.12-1.16-.34" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><circle cx="8.15" cy="8.05" r=".7" fill="currentColor"/><path d="M6.55 6.35c.28-.38.78-.6 1.4-.6.96 0 1.7.58 1.7 1.55v1.7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const PIN_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8.2 1.8l5 5-1.35 1.05-1.15 3.2-1.7-1.7-3.55 3.55-.95-.95 3.55-3.55-1.7-1.7 3.2-1.15L8.2 1.8z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M6.4 9.6L3.2 14" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const PIN_REMOVE_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const PINS_ROUTE = '/dsh-session-navigator/pins'
+    const PIN_ROUTE = '/dsh-session-navigator/pin'
+    const PIN_GROUP_ID = 'dsh-nav-pin-group'
+    let pinsDoc = { version: 1, pins: [] }
+    let menuWatchTimer = null
+    let hydrateUnsub = null
+    const HYDRATE_RETRY_MS = [0, 16, 32, 80, 160, 400, 800]
 
     // 深链意图的存活上限。宿主在会话很多时 session.list 可能几十秒到数分钟才到，
     // 旧的 8 秒重试窗口会在列表到达前就放弃，窗口于是永远停在别处/空白。
@@ -291,13 +424,157 @@ window.__ModuleLoader__.load({
       return parseTurn(el.getAttribute('data-dsh-turn'))
     }
 
-    function formatCapsuleLabel(title, sessionId, turn) {
-      const parts = ['🧭']
-      if (title) parts.push(title)
-      else if (sessionId) parts.push(sessionId.slice(0, 8))
-      if (turn) parts.push(`第 ${turn} 轮`)
-      parts.push('↗')
-      return parts.join(' · ')
+    function formatCapsuleLabel(title, sessionId, _turn) {
+      const id = normalizeSessionId(sessionId) || String(sessionId || '').trim()
+      const name = String(title || '').trim()
+      if (name && name !== id) return name
+      return id
+    }
+
+    function formatCapsuleTooltip(title, sessionId, turn) {
+      const id = normalizeSessionId(sessionId) || String(sessionId || '').trim()
+      const name = formatCapsuleLabel(title, sessionId, turn)
+      const turnN = parseTurn(turn)
+      const lines = []
+      if (name) lines.push(name)
+      if (turnN) lines.push(`第 ${turnN} 轮`)
+      if (id && id !== name) lines.push(id)
+      lines.push('在新窗口打开')
+      return lines.join('\n')
+    }
+
+    const LEAD_IN_HINT_RE = /查看会话|查看對話|Open session/i
+
+    function isRedundantSessionLeadIn(text, { title, sessionId, turn } = {}) {
+      const raw = String(text || '').replace(/\s+/g, ' ').trim()
+      if (!raw || !LEAD_IN_HINT_RE.test(raw)) return false
+      const id = normalizeSessionId(sessionId) || ''
+      const name = String(title || '').trim()
+      if (!name || name === id) return false
+      let rest = raw.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, ' ')
+      rest = rest.replace(/(?:查看会话|查看對話|Open session)\s*[：:]?/gi, ' ')
+      rest = rest.split(name).join(' ')
+      if (id) rest = rest.split(id).join(' ')
+      rest = rest.replace(/第\s*\d+\s*(?:轮|回合)/g, ' ')
+      rest = rest.replace(/\bturn[\s:#_-]*\d+\b/gi, ' ')
+      rest = rest.replace(/[·•.,，。:：;；!！?？↗~\-_/\\|'"“”‘’()[\]【】（）\s]/g, '')
+      return rest.length === 0
+    }
+
+    const SESSION_REF_ICON_PATH =
+      'M8 0.597656C3.91296 0.597656 0.599716 3.91103 0.599609 7.99805C0.599609 9.13171 0.854567 10.2079 1.31152 11.1699L1.59277 11.7607L2.77441 11.1992L2.49414 10.6084L2.36035 10.3076C2.06865 9.59612 1.90723 8.81645 1.90723 7.99805C1.90733 4.63362 4.63554 1.90625 8 1.90625C11.3644 1.90635 14.0917 4.63368 14.0918 7.99805C14.0918 11.3625 11.3644 14.0907 8 14.0908C7.311 14.0908 6.80642 14.0414 6.35938 13.918C5.919 13.7963 5.50105 13.5929 5.00098 13.2441C4.26805 12.7329 3.21756 12.5526 2.35156 13.0996L2.33789 13.1084L2.32422 13.1182L1.74805 13.5234L2.18164 14.8184L3.05957 14.2002C3.37505 14.0068 3.84248 14.0319 4.25195 14.3174C4.84447 14.7307 5.39718 15.009 6.01172 15.1787C6.61963 15.3465 7.25579 15.3984 8 15.3984C12.087 15.3983 15.4004 12.0851 15.4004 7.99805C15.4003 3.9111 12.087 0.59776 8 0.597656ZM4.56836 8.50977V9.80371H8.12402V8.50977H4.56836ZM4.56836 7.30078H11.4619V6.00684H4.56836V7.30078Z'
+
+    function createSessionRefIcon() {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+      svg.setAttribute('width', '14')
+      svg.setAttribute('height', '14')
+      svg.setAttribute('viewBox', '0 0 16 16')
+      svg.setAttribute('fill', 'none')
+      svg.setAttribute('aria-hidden', 'true')
+      svg.classList.add('dsh-session-anchor-icon')
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+      path.setAttribute('d', SESSION_REF_ICON_PATH)
+      path.setAttribute('fill', 'currentColor')
+      svg.appendChild(path)
+      return svg
+    }
+
+    function paintSessionChip(anchor, { title, sessionId, turn }) {
+      const id = normalizeSessionId(sessionId)
+      if (!id || !(anchor instanceof Element)) return
+      const label = formatCapsuleLabel(title, id, turn)
+      const tooltip = formatCapsuleTooltip(title, id, turn)
+      anchor.classList.add('dsh-session-anchor-capsule')
+      anchor.classList.remove('dsh-session-anchor-host')
+      anchor.dataset.dshSession = id
+      if (turn) anchor.dataset.dshTurn = String(turn)
+      else delete anchor.dataset.dshTurn
+      anchor.setAttribute('title', tooltip)
+      makeNativeAnchor(anchor, id, turn)
+      const labelNode = anchor.querySelector('.dsh-session-anchor-label')
+      const iconNode = anchor.querySelector('.dsh-session-anchor-icon')
+      if (anchor.dataset.dshNavLabel === label && labelNode && iconNode) {
+        if (labelNode.textContent !== label) labelNode.textContent = label
+        return
+      }
+      anchor.textContent = ''
+      const span = document.createElement('span')
+      span.className = 'dsh-session-anchor-label'
+      span.textContent = label
+      anchor.append(createSessionRefIcon(), span)
+      anchor.dataset.dshNavLabel = label
+    }
+
+    function hideRedundantLeadIn(host) {
+      if (!(host instanceof Element)) return
+      const sessionId = normalizeSessionId(
+        host.getAttribute('data-dsh-session') ||
+        host.querySelector('[data-dsh-session]')?.getAttribute('data-dsh-session') ||
+        '',
+      )
+      if (!sessionId) return
+      const title = sessionTitleOf(sessionId)
+      if (!title || title === sessionId) return
+      const turn = parseTurn(
+        host.getAttribute('data-dsh-turn') ||
+        host.querySelector('[data-dsh-turn]')?.getAttribute('data-dsh-turn'),
+      )
+      const opts = { title, sessionId, turn }
+
+      const hideElement = (el) => {
+        if (!(el instanceof Element) || el.getAttribute('data-dsh-nav-lead-hidden') === 'true') return
+        if (el.contains(host)) return
+        el.setAttribute('data-dsh-nav-lead-hidden', 'true')
+        el.hidden = true
+      }
+
+      const hideTextNode = (node) => {
+        if (!(node instanceof Text) || node.parentElement?.closest('[data-dsh-nav-lead-hidden]')) return
+        const wrap = document.createElement('span')
+        wrap.setAttribute('data-dsh-nav-lead-hidden', 'true')
+        wrap.hidden = true
+        node.parentNode.insertBefore(wrap, node)
+        wrap.appendChild(node)
+        let br = wrap.nextSibling
+        while (br && br.nodeType === Node.TEXT_NODE && !String(br.nodeValue).trim()) br = br.nextSibling
+        if (br && br.nodeName === 'BR') br.remove()
+      }
+
+      const tryHide = (node) => {
+        if (!node) return false
+        if (node.nodeType === Node.TEXT_NODE) {
+          if (!isRedundantSessionLeadIn(node.nodeValue, opts)) return false
+          hideTextNode(node)
+          return true
+        }
+        if (!(node instanceof Element)) return false
+        if (node.getAttribute('data-dsh-nav-lead-hidden') === 'true') return true
+        if (node.contains(host)) return false
+        if (node.matches?.('code, a, svg, .dsh-session-anchor-capsule, .dsh-session-anchor-host')) return false
+        if (!isRedundantSessionLeadIn(node.textContent || '', opts)) return false
+        hideElement(node)
+        return true
+      }
+
+      let cursor = host
+      for (let depth = 0; depth < 3 && cursor; depth += 1) {
+        let prev = cursor.previousSibling
+        while (prev) {
+          if (prev.nodeType === Node.TEXT_NODE && !String(prev.nodeValue || '').trim()) {
+            prev = prev.previousSibling
+            continue
+          }
+          if (prev.nodeName === 'BR') {
+            prev = prev.previousSibling
+            continue
+          }
+          if (tryHide(prev)) return
+          break
+        }
+        const parent = cursor.parentElement
+        if (!parent || /^(LI|TD|BODY|HTML|ARTICLE)$/i.test(parent.tagName)) break
+        cursor = parent
+      }
     }
 
     function sessionTitleOf(sessionId) {
@@ -323,11 +600,13 @@ window.__ModuleLoader__.load({
     }
 
     function injectStyles() {
-      if (document.getElementById('dsh-session-navigator-styles')) return
-      const style = document.createElement('style')
-      style.id = 'dsh-session-navigator-styles'
+      let style = document.getElementById('dsh-session-navigator-styles')
+      if (!style) {
+        style = document.createElement('style')
+        style.id = 'dsh-session-navigator-styles'
+        document.head.appendChild(style)
+      }
       style.textContent = CSS_STYLES
-      document.head.appendChild(style)
     }
 
     function removeStrayOverlay() {
@@ -1160,13 +1439,173 @@ window.__ModuleLoader__.load({
       if (!(btn instanceof HTMLElement)) return false
       const label = btn.getAttribute('aria-label') || ''
       if (/工作区|Workspace actions/.test(label)) return false
-      return /会话.+的操作$/.test(label) || /^Session actions for /.test(label)
+      return /会话.*的操作$/.test(label) || /^Session actions for /.test(label)
     }
 
     function isSessionActionsMenuText(text) {
       const value = String(text || '')
       return (value.includes('分叉会话') || value.includes('Fork session'))
         && (value.includes('归档会话') || value.includes('Archive session'))
+    }
+
+    function sessionMenuItemHost(menuItem) {
+      if (!menuItem || typeof menuItem !== 'object') return null
+      const wrap = menuItem.parentElement
+      if (!wrap) return null
+      const host = wrap.parentElement
+      if (!host) return null
+      return { host, before: wrap }
+    }
+
+    function sessionCopyMenuLabels(locale) {
+      const en = String(locale || '').toLowerCase().startsWith('en')
+      if (en) {
+        return {
+          id: 'Copy session ID',
+          mention: 'Copy session mention',
+          copiedId: 'Copied session ID',
+          copiedMention: 'Copied session mention',
+          failed: 'Copy failed',
+        }
+      }
+      return {
+        id: '复制会话 ID',
+        mention: '复制会话引用',
+        copiedId: '已复制会话 ID',
+        copiedMention: '已复制会话引用',
+        failed: '复制失败',
+      }
+    }
+
+    function parseExclusiveSessionMention(text) {
+      const trimmed = String(text ?? '').trim()
+      if (!trimmed) return null
+      const parsed = parseSessionReferenceMentions(trimmed)
+      if (parsed.length !== 1) return null
+      if (parsed[0].match !== trimmed) return null
+      return parsed[0]
+    }
+
+    function nextSessionMentionHydration(snapshot) {
+      if (!snapshot || (snapshot.phase !== 'plain' && snapshot.phase !== 'claimed')) return null
+      const draft = typeof snapshot.draft === 'string' ? snapshot.draft : ''
+      const occurrences = snapshot.occurrences || []
+      const plains = findPlainSessionMentions(draft, occurrences)
+      if (plains.length === 0) return null
+      const item = plains[0]
+      const start = clipboardOffsetToDetect(occurrences, item.index)
+      const end = clipboardOffsetToDetect(occurrences, item.index + item.match.length)
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+      if (typeof snapshot.draftRev !== 'number') return null
+      return {
+        sessionId: item.sessionId,
+        label: item.label,
+        mention: item.mention,
+        start,
+        end,
+        draftRev: snapshot.draftRev,
+      }
+    }
+
+
+    function ownValue(object, key) {
+      if (!object || typeof object !== 'object') return undefined
+      if (!Object.prototype.hasOwnProperty.call(object, key)) return undefined
+      return object[key]
+    }
+
+    function asPinRecord(value) {
+      if (typeof value === 'string') {
+        const sessionId = normalizeSessionId(value)
+        return sessionId ? { sessionId, pinnedAt: 0 } : null
+      }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+      const sessionId = normalizeSessionId(ownValue(value, 'sessionId') || ownValue(value, 'id'))
+      if (!sessionId) return null
+      const pinnedAt = Number(ownValue(value, 'pinnedAt'))
+      return {
+        sessionId,
+        pinnedAt: Number.isFinite(pinnedAt) && pinnedAt > 0 ? pinnedAt : 0,
+      }
+    }
+
+    function normalizePinDocument(raw) {
+      const listed = Array.isArray(raw) ? raw : ownValue(raw, 'pins')
+      const source = Array.isArray(listed) ? listed : []
+      const pins = []
+      const seen = new Set()
+      for (const item of source) {
+        const record = asPinRecord(item)
+        if (!record || seen.has(record.sessionId)) continue
+        seen.add(record.sessionId)
+        pins.push(record)
+        if (pins.length >= 40) break
+      }
+      return { version: 1, pins }
+    }
+
+    function isSessionPinned(document, sessionId) {
+      const id = normalizeSessionId(sessionId)
+      if (!id) return false
+      return normalizePinDocument(document).pins.some((item) => item.sessionId === id)
+    }
+
+    function togglePinnedSession(document, sessionId, pinned, now = Date.now()) {
+      const id = normalizeSessionId(sessionId)
+      const current = normalizePinDocument(document)
+      if (!id) return { ok: false, error: 'invalid session id', document: current, pinned: false }
+      const nextPins = current.pins.filter((item) => item.sessionId !== id)
+      if (pinned) {
+        const at = Number(now)
+        nextPins.unshift({
+          sessionId: id,
+          pinnedAt: Number.isFinite(at) && at > 0 ? at : Date.now(),
+        })
+        if (nextPins.length > 40) nextPins.length = 40
+      }
+      return { ok: true, document: { version: 1, pins: nextPins }, pinned: pinned === true }
+    }
+
+    function sessionPinMenuLabels(locale) {
+      const en = String(locale || '').toLowerCase().startsWith('en')
+      if (en) {
+        return {
+          pin: 'Pin session',
+          unpin: 'Unpin session',
+          group: 'Pinned',
+          pinnedToast: 'Pinned',
+          unpinnedToast: 'Unpinned',
+          failed: 'Pin failed',
+          missing: 'Unavailable',
+        }
+      }
+      return {
+        pin: '置顶会话',
+        unpin: '取消置顶',
+        group: '置顶',
+        pinnedToast: '已置顶',
+        unpinnedToast: '已取消置顶',
+        failed: '置顶失败',
+        missing: '会话不可用',
+      }
+    }
+
+    function compactRelativeTime(updatedAt, now, locale = 'zh') {
+      const t = Number(updatedAt)
+      if (!Number.isFinite(t) || t <= 0) return ''
+      const delta = Math.max(0, Number(now) - t)
+      const en = String(locale || '').toLowerCase().startsWith('en')
+      const minutes = Math.floor(delta / 60000)
+      if (minutes < 1) return en ? 'now' : '刚刚'
+      if (minutes < 60) return en ? `${minutes}m` : `${minutes}分钟`
+      const hours = Math.floor(minutes / 60)
+      if (hours < 24) return en ? `${hours}h` : `${hours}小时`
+      const days = Math.floor(hours / 24)
+      if (days < 30) return en ? `${days}d` : `${days}天`
+      const months = Math.floor(days / 30)
+      if (months < 12) return en ? `${months}mo` : `${months}个月`
+      const years = Math.floor(days / 365)
+      return en ? `${years}y` : `${years}年`
     }
 
     function tagSessionRows() {
@@ -1208,9 +1647,8 @@ window.__ModuleLoader__.load({
       if (typeof okOrMessage === 'string') {
         toast.textContent = okOrMessage
       } else {
-        toast.textContent = mentionLocale() === 'en'
-          ? (okOrMessage ? 'Copied session mention' : 'Copy failed')
-          : (okOrMessage ? '已复制会话引用' : '复制失败')
+        const labels = sessionCopyMenuLabels(mentionLocale())
+        toast.textContent = okOrMessage ? labels.copiedMention : labels.failed
       }
       document.body.appendChild(toast)
       if (toastTimer) clearTimeout(toastTimer)
@@ -1221,13 +1659,23 @@ window.__ModuleLoader__.load({
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     }
 
+    async function copySessionId(sessionId) {
+      const sid = normalizeSessionId(sessionId)
+      if (!sid) return
+      const labels = sessionCopyMenuLabels(mentionLocale())
+      const ok = await writeClipboard(sid)
+      showCopyToast(ok ? labels.copiedId : labels.failed)
+      closeOpenMenus()
+    }
+
     async function copySessionMention(sessionId) {
       const sid = normalizeSessionId(sessionId)
       if (!sid) return
+      const labels = sessionCopyMenuLabels(mentionLocale())
       const label = sessionTitleOf(sid) || sid
       const mention = formatSessionReferenceMention(sid, label)
       const ok = await writeClipboard(mention)
-      showCopyToast(ok)
+      showCopyToast(ok ? labels.copiedMention : labels.failed)
       closeOpenMenus()
     }
 
@@ -1253,46 +1701,277 @@ window.__ModuleLoader__.load({
       return parent && isSessionActionsMenuText(parent.textContent) ? parent : null
     }
 
-    const injectedMenus = new WeakSet()
-
-    function injectCopyMenuItem() {
-      const menu = findOpenSessionMenu()
-      if (!menu || injectedMenus.has(menu) || menu.querySelector('[data-dsh-copy-mention]')) return
-      const sessionId = pendingMenuSessionId
+    function sessionIdForOpenMenu() {
+      return pendingMenuSessionId
         || getSessionIdFromElement(document.querySelector('[role="treeitem"][aria-selected="true"]'))
-      if (!sessionId) return
-      const samples = [...menu.querySelectorAll('button, [role="menuitem"]')].filter((el) => !el.dataset.dshCopyMention)
-      const fallback = [...menu.children].filter((el) => el instanceof HTMLElement && !el.dataset.dshCopyMention && (el.textContent || '').trim())
-      const sample = samples[0] || fallback[0]
-      if (!sample) return
-      const item = sample.cloneNode(true)
-      item.dataset.dshCopyMention = sessionId
-      item.setAttribute('role', sample.getAttribute('role') || 'menuitem')
-      replaceMenuItemLabel(item, mentionLocale() === 'en' ? 'Copy session mention' : '复制会话引用')
-      const iconHost = item.querySelector('svg')?.parentElement || item.querySelector('svg')
-      if (iconHost?.tagName === 'svg') iconHost.outerHTML = COPY_ICON_SVG
-      else if (iconHost) {
-        const svg = item.querySelector('svg')
-        if (svg) svg.outerHTML = COPY_ICON_SVG
+    }
+
+    function officialMenuSample(menu) {
+      const items = [...menu.querySelectorAll('[role="menuitem"], button')].filter((el) => {
+        if (!(el instanceof HTMLElement)) return false
+        if (el.closest('[data-dsh-copy-menu]')) return false
+        return /重命名|Rename|分叉会话|Fork session|归档会话|Archive session/.test(el.textContent || '')
+      })
+      return items[0] || null
+    }
+
+    function prepareClonedCopyItem(wrap, { key, sessionId, label, iconSvg, onCopy }) {
+      wrap.dataset.dshCopyMenu = key
+      wrap.dataset.dshSession = sessionId
+      wrap.querySelector('[class*="check"]')?.remove()
+      const btn = wrap.querySelector('[role="menuitem"], button') || wrap
+      if (btn instanceof HTMLElement) {
+        btn.dataset.dshCopyMenu = key
+        btn.dataset.dshSession = sessionId
+        btn.removeAttribute('aria-haspopup')
+        btn.removeAttribute('aria-expanded')
+        btn.removeAttribute('disabled')
       }
-      const onCopy = (event) => {
+      replaceMenuItemLabel(wrap, label)
+      const svg = wrap.querySelector('svg')
+      if (svg) svg.outerHTML = iconSvg
+      const handle = (event) => {
         event.preventDefault()
         event.stopPropagation()
         event.stopImmediatePropagation()
-        copySessionMention(sessionId)
+        onCopy()
       }
-      item.addEventListener('pointerdown', onCopy, true)
-      item.addEventListener('click', onCopy, true)
-      injectedMenus.add(menu)
-      menu.insertBefore(item, sample)
+      wrap.addEventListener('pointerdown', handle, true)
+      wrap.addEventListener('click', handle, true)
+      btn.addEventListener('pointerdown', handle, true)
+      btn.addEventListener('click', handle, true)
+      return wrap
     }
 
-   function getComposerShell() {
-     const current = sessionsRef?.list?.getSnapshot?.()?.current
-     if (!current) return null
+    function injectSessionCopyMenuItems() {
+      const menu = findOpenSessionMenu()
+      if (!menu) return
+      const sessionId = sessionIdForOpenMenu()
+      if (!sessionId) return
+      const pinned = isSessionPinned(pinsDoc, sessionId)
+      const existingId = menu.querySelector('[data-dsh-copy-menu="id"]')
+      const existingMention = menu.querySelector('[data-dsh-copy-menu="mention"]')
+      const existingPin = menu.querySelector('[data-dsh-copy-menu="pin"]')
+      if (existingId && existingMention && existingPin
+        && existingId.getAttribute('data-dsh-session') === sessionId
+        && existingMention.getAttribute('data-dsh-session') === sessionId
+        && existingPin.getAttribute('data-dsh-session') === sessionId
+        && existingPin.getAttribute('data-dsh-pinned') === (pinned ? '1' : '0')) {
+        return
+      }
+      menu.querySelectorAll('[data-dsh-copy-menu]').forEach((el) => el.remove())
+
+      const sample = officialMenuSample(menu)
+      if (!sample) return
+      const slot = sessionMenuItemHost(sample)
+      if (!slot) return
+      const copyLabels = sessionCopyMenuLabels(mentionLocale())
+      const pinLabels = sessionPinMenuLabels(mentionLocale())
+      const mentionWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
+        key: 'mention',
+        sessionId,
+        label: copyLabels.mention,
+        iconSvg: COPY_MENTION_ICON_SVG,
+        onCopy: () => { copySessionMention(sessionId) },
+      })
+      const idWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
+        key: 'id',
+        sessionId,
+        label: copyLabels.id,
+        iconSvg: COPY_ID_ICON_SVG,
+        onCopy: () => { copySessionId(sessionId) },
+      })
+      const pinWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
+        key: 'pin',
+        sessionId,
+        label: pinned ? pinLabels.unpin : pinLabels.pin,
+        iconSvg: PIN_ICON_SVG,
+        onCopy: () => { setSessionPinned(sessionId, !pinned) },
+      })
+      pinWrap.setAttribute('data-dsh-pinned', pinned ? '1' : '0')
+      const pinBtn = pinWrap.querySelector('[role="menuitem"], button')
+      if (pinBtn) pinBtn.setAttribute('data-dsh-pinned', pinned ? '1' : '0')
+      try {
+        slot.host.insertBefore(pinWrap, slot.before)
+        slot.host.insertBefore(idWrap, slot.before)
+        slot.host.insertBefore(mentionWrap, slot.before)
+      } catch (error) {
+        console.warn('[dsh-session-navigator] session menu inject failed:', error)
+      }
+    }
+
+    function startMenuWatch() {
+      if (menuWatchTimer) return
+      let ticks = 0
+      menuWatchTimer = setInterval(() => {
+        ticks += 1
+        injectSessionCopyMenuItems()
+        if (!findOpenSessionMenu() || ticks > 80) {
+          clearInterval(menuWatchTimer)
+          menuWatchTimer = null
+        }
+      }, 50)
+    }
+
+    function findSessionTree() {
+      for (const tree of document.querySelectorAll('[role="tree"]')) {
+        const label = tree.getAttribute('aria-label') || ''
+        if (label === '会话' || label === 'Sessions') return tree
+      }
+      return null
+    }
+
+    function pinGroupSignature() {
+      const snap = sessionsRef?.list?.getSnapshot?.()
+      const current = snap?.current || ''
+      return pinsDoc.pins.map((item) => {
+        const row = snap?.byId?.[item.sessionId]
+        const title = row?.displayTitle || row?.title || ''
+        return `${item.sessionId}\t${title}\t${item.sessionId === current ? '1' : '0'}`
+      }).join('|')
+    }
+
+    async function loadPins() {
+      try {
+        const res = await fetch(PINS_ROUTE, {
+          credentials: 'same-origin',
+          headers: { accept: 'application/json' },
+        })
+        const data = await res.json()
+        if (data?.ok) pinsDoc = normalizePinDocument(data.document)
+      } catch (error) {
+        console.warn('[dsh-session-navigator] load pins failed:', error)
+      }
+      renderPinnedGroup()
+      markOfficialPinnedRows()
+    }
+
+    async function setSessionPinned(sessionId, pinned) {
+      const id = normalizeSessionId(sessionId)
+      if (!id) return
+      const previous = pinsDoc
+      const local = togglePinnedSession(pinsDoc, id, pinned, Date.now())
+      if (!local.ok) return
+      pinsDoc = local.document
+      renderPinnedGroup()
+      markOfficialPinnedRows()
+      closeOpenMenus()
+      const labels = sessionPinMenuLabels(mentionLocale())
+      try {
+        const res = await fetch(PIN_ROUTE, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ sessionId: id, pinned: pinned === true }),
+        })
+        let data = null
+        try { data = await res.json() } catch { data = null }
+        if (!res.ok || !data?.ok) throw new Error(data?.error || 'pin failed')
+        pinsDoc = normalizePinDocument(data.document)
+        renderPinnedGroup()
+        markOfficialPinnedRows()
+        showCopyToast(pinned ? labels.pinnedToast : labels.unpinnedToast)
+      } catch (error) {
+        pinsDoc = previous
+        renderPinnedGroup()
+        markOfficialPinnedRows()
+        showCopyToast(labels.failed)
+        console.warn('[dsh-session-navigator] pin failed:', error)
+      }
+    }
+
+    function markOfficialPinnedRows() {
+      const pinned = new Set(pinsDoc.pins.map((item) => item.sessionId))
+      for (const row of document.querySelectorAll('[role="treeitem"][data-dsh-session]')) {
+        if (row.closest(`#${PIN_GROUP_ID}`)) continue
+        const id = normalizeSessionId(row.getAttribute('data-dsh-session'))
+        if (id && pinned.has(id)) row.setAttribute('data-dsh-pinned', 'true')
+        else row.removeAttribute('data-dsh-pinned')
+      }
+    }
+
+    function renderPinnedGroup() {
+      const tree = findSessionTree()
+      const existing = document.getElementById(PIN_GROUP_ID)
+      if (!tree) {
+        existing?.remove()
+        return
+      }
+      if (pinsDoc.pins.length === 0) {
+        existing?.remove()
+        return
+      }
+      const signature = pinGroupSignature()
+      if (existing && existing.getAttribute('data-dsh-pin-signature') === signature && existing.parentElement === tree) {
+        return
+      }
+      const labels = sessionPinMenuLabels(mentionLocale())
+      const locale = mentionLocale()
+      const snap = sessionsRef?.list?.getSnapshot?.()
+      const now = Date.now()
+      const group = document.createElement('div')
+      group.id = PIN_GROUP_ID
+      group.setAttribute('data-dsh-nav-internal', 'true')
+      group.setAttribute('data-dsh-pin-signature', signature)
+      const header = document.createElement('div')
+      header.className = 'dsh-nav-pin-header'
+      header.innerHTML = `${PIN_ICON_SVG}<span></span>`
+      header.querySelector('span').textContent = `${labels.group} · ${pinsDoc.pins.length}`
+      group.appendChild(header)
+      for (const item of pinsDoc.pins) {
+        const rowSnap = snap?.byId?.[item.sessionId]
+        const title = rowSnap?.displayTitle || rowSnap?.title || labels.missing
+        const missing = !rowSnap || rowSnap.blank
+        const row = document.createElement('div')
+        row.className = 'dsh-nav-pin-row' + (missing ? ' is-missing' : '')
+        row.setAttribute('role', 'treeitem')
+        row.setAttribute('data-dsh-session', item.sessionId)
+        row.setAttribute('aria-selected', snap?.current === item.sessionId ? 'true' : 'false')
+        row.title = item.sessionId
+        const icon = document.createElement('span')
+        icon.className = 'dsh-nav-pin-row-icon'
+        icon.innerHTML = PIN_ICON_SVG
+        const name = document.createElement('span')
+        name.className = 'dsh-nav-pin-row-title'
+        name.textContent = title
+        const time = document.createElement('span')
+        time.className = 'dsh-nav-pin-row-time'
+        time.textContent = compactRelativeTime(rowSnap?.updatedAt, now, locale)
+        const unpin = document.createElement('button')
+        unpin.type = 'button'
+        unpin.className = 'dsh-nav-pin-row-unpin'
+        unpin.title = labels.unpin
+        unpin.setAttribute('aria-label', labels.unpin)
+        unpin.innerHTML = PIN_REMOVE_ICON_SVG
+        unpin.addEventListener('pointerdown', (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+        })
+        unpin.addEventListener('click', (event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          setSessionPinned(item.sessionId, false)
+        })
+        row.addEventListener('click', (event) => {
+          if (event.target.closest('.dsh-nav-pin-row-unpin')) return
+          if (!sessionsRef) return
+          try { sessionsRef.open(item.sessionId) } catch (error) {
+            console.warn('[dsh-session-navigator] open pinned session failed:', error)
+          }
+        })
+        row.append(icon, name, time, unpin)
+        group.appendChild(row)
+      }
+      existing?.remove()
+      tree.insertBefore(group, tree.firstChild)
+    }
+
+    function getComposerShell() {
+      const current = sessionsRef?.list?.getSnapshot?.()?.current
+      if (!current) return null
       const conversation = (typeof ctxGetConversation === 'function' ? ctxGetConversation() : null) || conversationRef
-     const input = conversation?.input
-      if (!input) return null
+      const input = conversation?.input
+      if (!input || typeof input.for !== 'function') return null
       try {
         const actx = sessionsRef.scope?.(current) || sessionsRef.binding?.(current)?.ctx
         if (!actx) return null
@@ -1302,36 +1981,71 @@ window.__ModuleLoader__.load({
       }
     }
 
+    function insertSessionChip(item, span) {
+      const shell = getComposerShell()
+      if (!shell || typeof shell.insertReference !== 'function') return false
+      const label = sessionTitleOf(item.sessionId) || item.label
+      try {
+        return shell.insertReference({
+          source: 'reference',
+          ref: item.mention,
+          label,
+          appearance: 'session',
+          clipboardText: item.mention,
+        }, span) === true
+      } catch (error) {
+        console.warn('[dsh-session-navigator] insertReference failed:', error)
+        return false
+      }
+    }
+
+    function insertSessionChipAtCaret(item) {
+      const shell = getComposerShell()
+      if (!shell) return false
+      const snapshot = typeof shell.state?.getSnapshot === 'function' ? shell.state.getSnapshot() : shell.snapshot
+      if (!snapshot || (snapshot.phase !== 'plain' && snapshot.phase !== 'claimed')) return false
+      const caret = typeof shell.caretSpan === 'function' ? shell.caretSpan() : null
+      const start = Number.isFinite(caret?.start) ? caret.start : (snapshot.draft || '').length
+      const end = Number.isFinite(caret?.end) ? caret.end : start
+      return insertSessionChip(item, { start, end, draftRev: snapshot.draftRev })
+    }
+
     function hydratePastedMentions() {
       const shell = getComposerShell()
-      if (!shell) return
+      if (!shell) return false
       const snapshot = typeof shell.state?.getSnapshot === 'function' ? shell.state.getSnapshot() : shell.snapshot
-      if (!snapshot || (snapshot.phase !== 'plain' && snapshot.phase !== 'claimed')) return
-      if (typeof shell.insertReference !== 'function') return
-      const plains = findPlainSessionMentions(snapshot.draft || '', snapshot.occurrences || [])
-      if (plains.length === 0) return
-      const item = plains[plains.length - 1]
-      const start = clipboardOffsetToDetect(snapshot.occurrences, item.index)
-      const end = clipboardOffsetToDetect(snapshot.occurrences, item.index + item.match.length)
-      const ok = shell.insertReference({
-        source: 'reference',
-        ref: item.mention,
-        label: sessionTitleOf(item.sessionId) || item.label,
-        appearance: 'session',
-        clipboardText: item.mention,
-      }, {
-        start,
-        end,
-        draftRev: snapshot.draftRev,
+      const plan = nextSessionMentionHydration(snapshot)
+      if (!plan) return true
+      const ok = insertSessionChip(plan, {
+        start: plan.start,
+        end: plan.end,
+        draftRev: plan.draftRev,
       })
-      if (ok && plains.length > 1) setTimeout(hydratePastedMentions, 0)
+      if (ok) setTimeout(hydratePastedMentions, 0)
+      return ok
     }
 
     function schedulePasteHydrate() {
-      queueMicrotask(hydratePastedMentions)
-      requestAnimationFrame(hydratePastedMentions)
-      setTimeout(hydratePastedMentions, 0)
-      setTimeout(hydratePastedMentions, 24)
+      if (hydrateUnsub) {
+        try { hydrateUnsub() } catch { /* ignore */ }
+        hydrateUnsub = null
+      }
+      for (const ms of HYDRATE_RETRY_MS) setTimeout(hydratePastedMentions, ms)
+      const shell = getComposerShell()
+      if (!shell?.state?.subscribe) return
+      const startedAt = Date.now()
+      hydrateUnsub = shell.state.subscribe(() => {
+        const done = hydratePastedMentions()
+        if (done || Date.now() - startedAt > 2000) {
+          try { hydrateUnsub?.() } catch { /* ignore */ }
+        try { pinsListUnsub?.() } catch { /* ignore */ }
+          hydrateUnsub = null
+        }
+      })
+      setTimeout(() => {
+        try { hydrateUnsub?.() } catch { /* ignore */ }
+        hydrateUnsub = null
+      }, 2200)
     }
 
     let ctxGetConversation = null
@@ -1376,11 +2090,11 @@ window.__ModuleLoader__.load({
 
     function navFromElement(el) {
       if (!(el instanceof Element)) return null
-      if (el.closest('.dsh-nav-id-main, [data-dsh-copy-mention]')) return null
+      if (el.closest('.dsh-nav-id-main, [data-dsh-copy-menu]')) return null
       // ↗ 自己有 handler；侧栏 / 搜索 treeitem 普通点击必须交给官方切会话
       if (el.closest('.dsh-nav-new-window, .dsh-nav-tree-item-arrow')) return null
       if (el.closest('[role="treeitem"]')) return null
-      const host = el.closest('.dsh-session-anchor-capsule, a[href], code')
+      const host = el.closest('.dsh-session-anchor-capsule, .dsh-session-anchor-host, a[href], code')
       if (!host) return null
       if (host.closest('.dsh-navx-root, .dsh-navx-panel, .dsh-navx-results')) return null
       const fromData = normalizeSessionId(host.getAttribute('data-dsh-session') || '')
@@ -1405,17 +2119,9 @@ window.__ModuleLoader__.load({
         if (!nav) continue
         const next = `/?session=${encodeURIComponent(nav.sessionId)}${nav.turn ? `&turn=${nav.turn}` : ''}`
         if (a.getAttribute('href') !== next) a.setAttribute('href', next)
-        a.classList.add('dsh-session-anchor-capsule')
-        a.dataset.dshSession = nav.sessionId
-        if (nav.turn) a.dataset.dshTurn = String(nav.turn)
         const title = sessionTitleOf(nav.sessionId)
-        const label = formatCapsuleLabel(title, nav.sessionId, nav.turn)
-        if ((a.textContent || '').trim() === nav.sessionId || a.dataset.dshNavLabel !== label) {
-          a.textContent = label
-          a.dataset.dshNavLabel = label
-        }
-        a.setAttribute('title', `${title || nav.sessionId}\n${nav.sessionId}\n在新窗口打开`)
-        makeNativeAnchor(a, nav.sessionId, nav.turn)
+        paintSessionChip(a, { title, sessionId: nav.sessionId, turn: nav.turn })
+        hideRedundantLeadIn(a.closest('.dsh-session-anchor-host') || a)
       }
     }
 
@@ -1449,21 +2155,27 @@ window.__ModuleLoader__.load({
       const scope = root || document
       for (const el of scope.querySelectorAll('code')) {
         if (el.closest('pre')) continue
-        const raw = (el.getAttribute('data-dsh-session') || el.textContent || '').trim()
+        const raw = (
+          el.getAttribute('data-dsh-session') ||
+          el.querySelector('[data-dsh-session]')?.getAttribute('data-dsh-session') ||
+          el.textContent ||
+          ''
+        ).trim()
         const id = normalizeSessionId(raw)
         if (!id) continue
         if ((el.textContent || '').trim().length > 120 && !el.dataset.dshSession) continue
         const title = sessionTitleOf(id)
         const turn = findTurnForCode(el)
         const label = formatCapsuleLabel(title, id, turn)
-        el.classList.add('dsh-session-anchor-capsule')
+        el.classList.remove('dsh-session-anchor-capsule')
+        el.classList.add('dsh-session-anchor-host')
         el.dataset.dshSession = id
         if (turn) {
           el.dataset.dshTurn = String(turn)
         } else {
           delete el.dataset.dshTurn
         }
-        // 行内 code 没有 href：把标签换成内层 <a>，点它同样走原生新窗口。
+        // 行内 code 没有 href：把标签换成内层 <a>，只画这一层芯片，外壳保持透明。
         let inner = el.querySelector('a[data-dsh-nav-native="true"]')
         if (!inner || !inner.isConnected) {
           inner = document.createElement('a')
@@ -1472,10 +2184,119 @@ window.__ModuleLoader__.load({
           el.appendChild(inner)
           el.dataset.dshNavLabel = ''
         }
-        makeNativeAnchor(inner, id, turn)
-        if (inner.textContent !== label) inner.textContent = label
+        paintSessionChip(inner, { title, sessionId: id, turn })
         el.dataset.dshNavLabel = label
-        el.setAttribute('title', `${title || id}\n${id}\n在新窗口打开`)
+        el.removeAttribute('title')
+        hideRedundantLeadIn(el)
+      }
+    }
+
+    // ── 裸 session id 兜底 ──────────────────────────────────────────────
+    //
+    // 上面 markSessionCode 只认行内 <code>，rewriteSessionAnchors 只认真实 <a>。
+    // 两者都够不着「id 以纯文字出现」的情况，而这恰恰是 Agent 最常见的写法之一。
+    //
+    // 官方 markdown 渲染器对相对地址的处理更彻底：非 http/https/mailto 的 href
+    // 只渲染链接文字、把 URL 整个丢掉（dsh-web-frontend 里 Xu() 的 l === "" 分支），
+    // 所以 `[标题](/?session=…)` 那种写法连 id 都不在 DOM 里，事后谁也救不回来 ——
+    // 那一种只能靠 skill 让 Agent 一开始就写对。这里救的是「id 还在页面上」的那一种：
+    // 扫文本节点，把它做成和其他胶囊一模一样的可点元素，等同于「当作 Agent 写对了」。
+    const BARE_SESSION_RE = /session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
+
+    // 预筛：一个完整 id 至少 44 个字符，短于此的文本节点直接跳过。
+    // 用大小写不敏感的正则而不是 indexOf('session-')，否则全大写的 id 会漏掉。
+    const BARE_SESSION_HINT_RE = /session-/i
+
+    // 不该改写的区域：已处理过的、代码、插件自己的界面、表单控件。
+    const BARE_TEXT_SKIP_SELECTOR = [
+      'a[href]',
+      'code',
+      'pre',
+      'input',
+      'textarea',
+      'select',
+      'script',
+      'style',
+      'button',
+      '[data-dsh-nav-internal="true"]',
+      '[data-dsh-nav-lead-hidden]',
+      '.dsh-session-anchor-capsule',
+      '.dsh-session-anchor-host',
+      '#dsh-nav-id-hits',
+      '#dsh-nav-deeplink-hint',
+      '#dsh-copy-mention-toast',
+      '.dsh-navx-root',
+      '.dsh-navx-panel',
+      '.dsh-navx-results',
+    ].join(', ')
+
+    /** 文本节点所属消息块的轮次：优先读官方容器的 data-chat-turn。 */
+    function turnForTextNode(textNode) {
+      const parent = textNode.parentElement
+      if (!parent) return null
+      const block = parent.closest('[data-chat-turn]')
+      const fromBlock = parseTurn(block?.getAttribute('data-chat-turn'))
+      if (fromBlock) return fromBlock
+      // 同块内往前找「第 N 轮」字样
+      let prev = textNode.previousSibling
+      while (prev) {
+        const found = extractTurnFromText(prev.textContent)
+        if (found) return found
+        prev = prev.previousSibling
+      }
+      return extractTurnFromText(parent.closest('li, td, p, blockquote')?.textContent)
+    }
+
+    function markBareSessionText(root) {
+      const scope = root || document
+      if (!scope || typeof document.createTreeWalker !== 'function') return
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          const text = node.nodeValue
+          if (!text || text.length < 44) return NodeFilter.FILTER_REJECT
+          if (!BARE_SESSION_HINT_RE.test(text)) return NodeFilter.FILTER_REJECT
+          const parent = node.parentElement
+          if (!parent || parent.closest(BARE_TEXT_SKIP_SELECTOR)) return NodeFilter.FILTER_REJECT
+          return NodeFilter.FILTER_ACCEPT
+        },
+      })
+      const targets = []
+      let node = walker.nextNode()
+      while (node) {
+        targets.push(node)
+        node = walker.nextNode()
+      }
+      for (const textNode of targets) {
+        const text = textNode.nodeValue || ''
+        BARE_SESSION_RE.lastIndex = 0
+        if (!BARE_SESSION_RE.test(text)) continue
+        const turn = turnForTextNode(textNode)
+        const frag = document.createDocumentFragment()
+        const painted = []
+        let cursor = 0
+        let match = null
+        BARE_SESSION_RE.lastIndex = 0
+        while ((match = BARE_SESSION_RE.exec(text)) !== null) {
+          if (match.index > cursor) {
+            frag.appendChild(document.createTextNode(text.slice(cursor, match.index)))
+          }
+          const id = normalizeSessionId(match[0])
+          if (id) {
+            const title = sessionTitleOf(id)
+            const anchor = document.createElement('a')
+            paintSessionChip(anchor, { title, sessionId: id, turn })
+            frag.appendChild(anchor)
+            painted.push(anchor)
+          } else {
+            frag.appendChild(document.createTextNode(match[0]))
+          }
+          cursor = match.index + match[0].length
+        }
+        if (cursor < text.length) {
+          frag.appendChild(document.createTextNode(text.slice(cursor)))
+        }
+        if (textNode.parentNode) textNode.parentNode.replaceChild(frag, textNode)
+        for (const anchor of painted) hideRedundantLeadIn(anchor)
       }
     }
 
@@ -1504,9 +2325,12 @@ window.__ModuleLoader__.load({
             const btn = event.target.closest('button[aria-label]')
             if (!btn || !isSessionActionsButton(btn)) return
             pendingMenuSessionId = getSessionIdFromElement(btn)
-            requestAnimationFrame(injectCopyMenuItem)
-            setTimeout(injectCopyMenuItem, 0)
-            setTimeout(injectCopyMenuItem, 32)
+              || normalizeSessionId(btn.closest('[data-dsh-session]')?.getAttribute('data-dsh-session'))
+            requestAnimationFrame(injectSessionCopyMenuItems)
+            setTimeout(injectSessionCopyMenuItems, 0)
+            setTimeout(injectSessionCopyMenuItems, 32)
+            setTimeout(injectSessionCopyMenuItems, 80)
+            startMenuWatch()
           } catch (err) {
             console.warn('[dsh-session-navigator] pointerdown handler error:', err)
           }
@@ -1526,7 +2350,7 @@ window.__ModuleLoader__.load({
               trySelfHealConnectingWorkspace()
               return
             }
-            if (event.target.closest('.dsh-nav-id-main, [data-dsh-copy-mention]')) return
+            if (event.target.closest('.dsh-nav-id-main, [data-dsh-copy-menu]')) return
             if (event.target.closest('.dsh-nav-new-window, .dsh-nav-tree-item-arrow')) return
 
             const nav = navFromElement(event.target)
@@ -1578,10 +2402,16 @@ window.__ModuleLoader__.load({
         (event) => {
           try {
             const text = event.clipboardData?.getData('text/plain') || ''
-            if (!parseSessionReferenceMentions(text).length) return
             const target = event.target instanceof Element ? event.target : event.target?.parentElement
             if (!(target instanceof Element)) return
             if (!target.closest('[contenteditable="true"], [data-lexical-editor]')) return
+            const exclusive = parseExclusiveSessionMention(text)
+            if (exclusive && insertSessionChipAtCaret(exclusive)) {
+              event.preventDefault()
+              event.stopImmediatePropagation()
+              return
+            }
+            if (!parseSessionReferenceMentions(text).length) return
             schedulePasteHydrate()
           } catch (err) {
             console.warn('[dsh-session-navigator] paste handler error:', err)
@@ -1655,9 +2485,12 @@ window.__ModuleLoader__.load({
       removeStrayOverlay()
       rewriteSessionAnchors(document)
       markSessionCode(document)
+      markBareSessionText(document)
       injectArrowsToOfficialSearchResults()
       tagSessionRows()
-      injectCopyMenuItem()
+      injectSessionCopyMenuItems()
+      renderPinnedGroup()
+      markOfficialPinnedRows()
       const input = findOfficialSearchInput()
       if (input) renderInstantIdHits(input.value)
     }
@@ -1690,7 +2523,7 @@ window.__ModuleLoader__.load({
       // 排障入口：控制台可查深链状态、可手动重放一次直达。
       try {
         window.__dshSessionNavigator = {
-          version: '0.4.1',
+          version: '0.4.4',
           openInNewWindow,
           openSessionInThisWindow,
           get state() {
@@ -1709,6 +2542,14 @@ window.__ModuleLoader__.load({
       }
       const clickRouter = new AbortController()
       setupClickRouter(clickRouter.signal)
+      loadPins()
+      let pinsListUnsub = null
+      if (typeof sessionsRef.list?.subscribe === 'function') {
+        pinsListUnsub = sessionsRef.list.subscribe(() => {
+          renderPinnedGroup()
+          markOfficialPinnedRows()
+        })
+      }
       const originWatchTimer = startOriginHealthWatch()
       // 若本页是被 openInNewWindow 开出来的，回报一次「已就绪」。
       announceEntry()
@@ -1729,7 +2570,9 @@ window.__ModuleLoader__.load({
       }
       runEnhance()
       observer = new MutationObserver(() => {
-        injectCopyMenuItem()
+        injectSessionCopyMenuItems()
+        renderPinnedGroup()
+        markOfficialPinnedRows()
         if (enhanceTimer) return
         enhanceTimer = setTimeout(() => {
           enhanceTimer = null
@@ -1746,9 +2589,12 @@ window.__ModuleLoader__.load({
        hideDeepLinkHint()
        if (enhanceTimer) clearTimeout(enhanceTimer)
        if (toastTimer) clearTimeout(toastTimer)
+       if (menuWatchTimer) clearInterval(menuWatchTimer)
+       try { hydrateUnsub?.() } catch { /* ignore */ }
        document.getElementById('dsh-session-navigator-styles')?.remove()
        document.getElementById('dsh-nav-id-hits')?.remove()
        document.getElementById('dsh-copy-mention-toast')?.remove()
+       document.getElementById('dsh-nav-pin-group')?.remove()
        removeStrayOverlay()
      }
    }
