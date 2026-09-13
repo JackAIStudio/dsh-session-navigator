@@ -1831,19 +1831,40 @@ window.__ModuleLoader__.load({
       }).join('|')
     }
 
-    async function loadPins() {
+    let pinsBroadcast = null
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        pinsBroadcast = new BroadcastChannel('dsh-pins-sync')
+        pinsBroadcast.onmessage = (ev) => {
+          if (ev?.data?.type === 'pins-updated' && ev.data.document) {
+            pinsDoc = normalizePinDocument(ev.data.document)
+            renderPinnedGroup()
+            markOfficialPinnedRows()
+          }
+        }
+      }
+    } catch {}
+
+    async function loadPins(silent = false) {
       try {
         const res = await fetch(PINS_ROUTE, {
           credentials: 'same-origin',
           headers: { accept: 'application/json' },
         })
         const data = await res.json()
-        if (data?.ok) pinsDoc = normalizePinDocument(data.document)
+        if (data?.ok) {
+          const next = normalizePinDocument(data.document)
+          const currSig = pinsDoc.pins.map((p) => `${p.sessionId}:${p.pinnedAt}`).join('|')
+          const nextSig = next.pins.map((p) => `${p.sessionId}:${p.pinnedAt}`).join('|')
+          if (currSig !== nextSig || !silent) {
+            pinsDoc = next
+            renderPinnedGroup()
+            markOfficialPinnedRows()
+          }
+        }
       } catch (error) {
-        console.warn('[dsh-session-navigator] load pins failed:', error)
+        if (!silent) console.warn('[dsh-session-navigator] load pins failed:', error)
       }
-      renderPinnedGroup()
-      markOfficialPinnedRows()
     }
 
     async function setSessionPinned(sessionId, pinned) {
@@ -1868,6 +1889,7 @@ window.__ModuleLoader__.load({
         try { data = await res.json() } catch { data = null }
         if (!res.ok || !data?.ok) throw new Error(data?.error || 'pin failed')
         pinsDoc = normalizePinDocument(data.document)
+        try { pinsBroadcast?.postMessage({ type: 'pins-updated', document: pinsDoc }) } catch {}
         renderPinnedGroup()
         markOfficialPinnedRows()
         showCopyToast(pinned ? labels.pinnedToast : labels.unpinnedToast)
@@ -2546,10 +2568,23 @@ window.__ModuleLoader__.load({
       let pinsListUnsub = null
       if (typeof sessionsRef.list?.subscribe === 'function') {
         pinsListUnsub = sessionsRef.list.subscribe(() => {
+          loadPins(true)
           renderPinnedGroup()
           markOfficialPinnedRows()
         })
       }
+
+      // 实时同步：窗口获得焦点或从后台切回时毫秒级静默拉取最新置顶
+      window.addEventListener('focus', () => { loadPins(true) })
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'hidden') loadPins(true)
+      })
+
+      // 前台静默低频心跳探针（2.5 秒，仅在页面处于可见状态时静默查询，开销极低）
+      setInterval(() => {
+        if (document.visibilityState === 'hidden') return
+        void loadPins(true)
+      }, 2500)
       const originWatchTimer = startOriginHealthWatch()
       // 若本页是被 openInNewWindow 开出来的，回报一次「已就绪」。
       announceEntry()
