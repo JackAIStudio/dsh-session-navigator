@@ -724,9 +724,9 @@ window.__ModuleLoader__.load({
     // 所以开新标签一律「先开、再验、不行换 origin、最后才退回当前窗口」。
     const NEW_TAB_PROBE_KEY = 'navprobe'
     const NEW_TAB_PROBE_STEP_MS = 400
-    // 「还是 about:blank」的判定要快：window.open 的用户手势只有约 5 秒有效期，
-    // 探测拖太久，换 origin 重试的那次 window.open 就必被拦（实测确认）。
-    const NEW_TAB_BLANK_MS = 3000
+    // 0.1.5 大型 bundle 初始化和 Typert Gateway WebSocket 握手需要更多就绪时间，
+    // 放宽判定窗口至 12 秒；且超时后不再暴力调用 win.close() 杀掉用户的新窗口。
+    const NEW_TAB_BLANK_MS = 12000
     const ORIGIN_MEMORY_KEY = 'dsh-nav.origin-exhausted'
     const ORIGIN_MEMORY_TTL_MS = 90 * 1000
 
@@ -866,11 +866,10 @@ window.__ModuleLoader__.load({
             done()
             return
           }
-          // 仍是 about:blank：要么首屏还没提交，要么这个 origin 的连接额度已用尽。
+          // 探测已超时：绝不调用 win.close() 暴力杀掉新窗口，也不冲掉当前窗口。
+          // 0.1.5 架构下已无 HTTP/1.1 SSE 6 连接池限制，新窗口可自行完成加载。
           if (Date.now() - startedAt >= NEW_TAB_BLANK_MS) {
-            markOriginExhausted()
-            try { win.close() } catch { /* 关不掉就留着，不阻塞主流程 */ }
-            attempt(index + 1)
+            done()
             return
           }
           setTimeout(probe, NEW_TAB_PROBE_STEP_MS)
@@ -1845,26 +1844,41 @@ window.__ModuleLoader__.load({
       }
     } catch {}
 
+    let loadPinsPromise = null
+    let lastPinsLoadTime = 0
+    const PINS_LOAD_MIN_INTERVAL_MS = 8000
+
     async function loadPins(silent = false) {
-      try {
-        const res = await fetch(PINS_ROUTE, {
-          credentials: 'same-origin',
-          headers: { accept: 'application/json' },
-        })
-        const data = await res.json()
-        if (data?.ok) {
-          const next = normalizePinDocument(data.document)
-          const currSig = pinsDoc.pins.map((p) => `${p.sessionId}:${p.pinnedAt}`).join('|')
-          const nextSig = next.pins.map((p) => `${p.sessionId}:${p.pinnedAt}`).join('|')
-          if (currSig !== nextSig || !silent) {
-            pinsDoc = next
-            renderPinnedGroup()
-            markOfficialPinnedRows()
-          }
-        }
-      } catch (error) {
-        if (!silent) console.warn('[dsh-session-navigator] load pins failed:', error)
+      const now = Date.now()
+      if (silent && now - lastPinsLoadTime < PINS_LOAD_MIN_INTERVAL_MS) {
+        return
       }
+      if (loadPinsPromise) return loadPinsPromise
+      loadPinsPromise = (async () => {
+        try {
+          const res = await fetch(PINS_ROUTE, {
+            credentials: 'same-origin',
+            headers: { accept: 'application/json' },
+          })
+          const data = await res.json()
+          if (data?.ok) {
+            const next = normalizePinDocument(data.document)
+            const currSig = pinsDoc.pins.map((p) => `${p.sessionId}:${p.pinnedAt}`).join('|')
+            const nextSig = next.pins.map((p) => `${p.sessionId}:${p.pinnedAt}`).join('|')
+            if (currSig !== nextSig || !silent) {
+              pinsDoc = next
+              renderPinnedGroup()
+              markOfficialPinnedRows()
+            }
+            lastPinsLoadTime = Date.now()
+          }
+        } catch (error) {
+          if (!silent) console.warn('[dsh-session-navigator] load pins failed:', error)
+        } finally {
+          loadPinsPromise = null
+        }
+      })()
+      return loadPinsPromise
     }
 
     async function setSessionPinned(sessionId, pinned) {
@@ -2377,16 +2391,15 @@ window.__ModuleLoader__.load({
 
             const nav = navFromElement(event.target)
 
-            // 1. Cmd/Ctrl + 点击 = 「取反」：
-            //    侧栏会话行官方默认是当前窗口切换 → ⌘ 开新标签；
-            //    聊天胶囊插件默认是开新标签 → ⌘ 在当前窗口打开。
+            // 1. Cmd/Ctrl + 点击：统一支持新窗口多开
+            //    侧栏会话行：官方默认是当前窗口切换 → ⌘ 开新窗口；
+            //    聊天胶囊：用户按 ⌘ 同样在新窗口打开，保持多开行为直觉一致。
             if (event.metaKey || event.ctrlKey) {
               const sid = (nav && nav.sessionId) || getSessionIdFromElement(event.target)
               if (sid) {
                 event.preventDefault()
                 event.stopImmediatePropagation()
-                if (nav) openSessionInThisWindow(nav.sessionId, nav.turn)
-                else openInNewWindow(sid)
+                openInNewWindow(sid, nav?.turn)
                 return
               }
             }
@@ -2568,23 +2581,23 @@ window.__ModuleLoader__.load({
       let pinsListUnsub = null
       if (typeof sessionsRef.list?.subscribe === 'function') {
         pinsListUnsub = sessionsRef.list.subscribe(() => {
-          loadPins(true)
+          // 会话列表更新只重渲染内存置顶结构，绝不发起网络 fetch 挤占连接池
           renderPinnedGroup()
           markOfficialPinnedRows()
         })
       }
 
-      // 实时同步：窗口获得焦点或从后台切回时毫秒级静默拉取最新置顶
+      // 实时同步：窗口获得焦点或从后台切回时拉取最新置顶（带 8 秒节流防护）
       window.addEventListener('focus', () => { loadPins(true) })
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState !== 'hidden') loadPins(true)
       })
 
-      // 前台静默低频心跳探针（2.5 秒，仅在页面处于可见状态时静默查询，开销极低）
+      // 低频兜底心跳（30 秒），各标签页主要依赖 BroadcastChannel 实时同步
       setInterval(() => {
         if (document.visibilityState === 'hidden') return
         void loadPins(true)
-      }, 2500)
+      }, 30000)
       const originWatchTimer = startOriginHealthWatch()
       // 若本页是被 openInNewWindow 开出来的，回报一次「已就绪」。
       announceEntry()
