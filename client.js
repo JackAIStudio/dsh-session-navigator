@@ -617,12 +617,10 @@ window.__ModuleLoader__.load({
     /**
      * 新标签的候选地址：只有当前这一个。
      *
-     * 0.4.1 起不再往 localhost ⇄ 127.0.0.1 的另一边分流。分流的理由曾经成立——
-     * 浏览器对单个 host:port 只给约 6 条并发连接，而每个 DSH 标签要常驻两条
-     * （官方 client-hmr 的 /plugins/events + badge 通知流），三四个标签就挤满。
-     * 现在这两条都归零（client-hmr 已关、badge 只留单例），容量不再需要靠换
-     * 地址解决；而换地址的代价是确定的：登录 cookie 按 host:port 签发，另一边
-     * 没有 cookie，打开就是一个 401「dsh web authentication required」页面。
+     * 0.4.1 起不再往 localhost ⇄ 127.0.0.1 的另一边分流。分流的理由是 0.1.2 的
+     * HTTP/1.1 6 槽（client-hmr EventSource + badge SSE，6÷2=3）。0.1.5 主通道
+     * 已是 WebSocket；HMR 默认关、badge 单例，容量不再靠换地址。换地址的代价
+     * 是确定的：登录 cookie 按 host:port 签发，另一边没有 cookie，打开就是 401。
      */
     function candidateOrigins() {
       return [window.location.origin]
@@ -717,11 +715,10 @@ window.__ModuleLoader__.load({
       try { win.focus() } catch { /* ignore */ }
     }
 
-    // DSH 每个标签要维持约 4 条长连接（HMR 事件流 / 连接流 / 会话控制流 / 日志流），
-    // 实测单个 origin 的连接额度约 13 条 —— 于是**每个 origin 同时只能养活 3 个
-    // DSH 标签**，第 4 个会静默停在 about:blank（Chrome 不报错，JS 也捕获不到）。
-    //
-    // 所以开新标签一律「先开、再验、不行换 origin、最后才退回当前窗口」。
+    // 0.1.2：每标签多条 HTTP SSE，Chrome HTTP/1.1 6 槽 → 大约 3 个标签，第 4 个
+    // 静默停在 about:blank。0.1.5：主通道是 /api/remote.mux WebSocket，这条上限没了。
+    // 还占 HTTP/1.1 的只剩 client-hmr 的 EventSource（默认已关）和 badge 单例。
+    // 新标签仍然「先开、再验」：0.1.5 大 bundle + WebSocket 握手慢，旧探针会误杀。
     const NEW_TAB_PROBE_KEY = 'navprobe'
     const NEW_TAB_PROBE_STEP_MS = 400
     // 0.1.5 大型 bundle 初始化和 Typert Gateway WebSocket 握手需要更多就绪时间，
