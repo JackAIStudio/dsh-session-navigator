@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { collectIdHitsFromList, mergeIdHits } from './protocol.js'
+import { resolveDshHome } from './home-paths.js'
 import {
   CHROME_TAB_ROUTE,
   isLoopbackAddress,
@@ -26,7 +26,7 @@ export const inject = ['webServer']
 
 const SEARCH_ROUTE = '/dsh-session-navigator/search'
 const INFO_ROUTE = '/dsh-session-navigator/info'
-const VERSION = '0.4.4'
+const VERSION = '0.4.5'
 const BODY_LIMIT = 2048
 
 function sendJson(res, statusCode, value) {
@@ -38,15 +38,19 @@ function sendJson(res, statusCode, value) {
   res.end(body)
 }
 
+/**
+ * The FTS index is written per profile, so the default has to follow the home
+ * this instance booted with instead of a machine-wide `~/.dsh`.
+ */
 function resolveDbPath(config = {}) {
   if (config.dbPath && existsSync(config.dbPath)) return config.dbPath
-  const defaultPath = join(homedir(), '.dsh', 'storages', 'sessions-fts.db')
+  const defaultPath = join(resolveDshHome(config.dshHome), 'storages', 'sessions-fts.db')
   return existsSync(defaultPath) ? defaultPath : null
 }
 
 function resolveSummaryCacheDir(config = {}) {
   if (config.projCacheDir && existsSync(config.projCacheDir)) return config.projCacheDir
-  return defaultProjectionCacheDir()
+  return defaultProjectionCacheDir(config.dshHome)
 }
 
 function isLoopbackRequest(req) {
@@ -201,7 +205,7 @@ export function apply(ctx, config = {}) {
   const summaryCacheDir = resolveSummaryCacheDir(config)
   const pinsPath = typeof config.pinsPath === 'string' && config.pinsPath
     ? config.pinsPath
-    : defaultPinsPath()
+    : defaultPinsPath(config.dshHome)
   let pinWrite = Promise.resolve()
   const withPinLock = (fn) => {
     const run = pinWrite.then(fn, fn)
@@ -259,6 +263,7 @@ export function apply(ctx, config = {}) {
           ok: true,
           name: 'dsh-session-navigator',
           version: VERSION,
+          dshHome: resolveDshHome(config.dshHome),
           dbAvailable: Boolean(dbPath),
           dbPath,
           summaryCacheAvailable: Boolean(summaryCacheDir),

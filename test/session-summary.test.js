@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
-import { isSessionId, readSessionSummary } from '../session-summary.js'
+import { defaultProjectionCacheDir, isSessionId, readSessionSummary } from '../session-summary.js'
 
 const SESSION_ID = 'session-0105c416-62ee-43a0-9035-239b253688e0'
 
@@ -106,5 +106,44 @@ describe('readSessionSummary', () => {
     const headlessId = 'session-66666666-6666-6666-6666-666666666666'
     writeRecord(headlessId, { rows: {} })
     assert.equal(await readSessionSummary(headlessId, cacheDir), null)
+  })
+})
+
+describe('default projection cache dir', () => {
+  // The cache is per profile, just like the sessions it projects: resolving it
+  // from a shared ~/.dsh would summarize another profile's corpus.
+  it('reads the cache of the profile this instance booted with', () => {
+    const profileHome = mkdtempSync(join(tmpdir(), 'dsh-nav-profile-'))
+    const expected = join(profileHome, 'storages', 'session_projcache', 'sessions')
+    mkdirSync(expected, { recursive: true })
+    const explicitHome = mkdtempSync(join(tmpdir(), 'dsh-nav-explicit-'))
+    const explicitExpected = join(explicitHome, 'storages', 'session_projcache', 'sessions')
+    mkdirSync(explicitExpected, { recursive: true })
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = profileHome
+    try {
+      assert.equal(defaultProjectionCacheDir(), expected)
+      // An explicit home beats $DSH_HOME, and only reports a cache that exists.
+      assert.equal(defaultProjectionCacheDir(explicitHome), explicitExpected)
+      assert.equal(defaultProjectionCacheDir(join(explicitHome, 'missing')), null)
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+      rmSync(profileHome, { recursive: true, force: true })
+      rmSync(explicitHome, { recursive: true, force: true })
+    }
+  })
+
+  it('returns null for a profile that has not written a cache yet', () => {
+    const emptyHome = mkdtempSync(join(tmpdir(), 'dsh-nav-nocache-'))
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = emptyHome
+    try {
+      assert.equal(defaultProjectionCacheDir(), null)
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+      rmSync(emptyHome, { recursive: true, force: true })
+    }
   })
 })

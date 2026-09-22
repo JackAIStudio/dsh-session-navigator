@@ -11,7 +11,7 @@ import {
   sessionPinMenuLabels,
   togglePinnedSession,
 } from '../protocol.js'
-import { applyPinChange, readPinsDocument, writePinsDocument } from '../pins.js'
+import { applyPinChange, defaultPinsPath, readPinsDocument, writePinsDocument } from '../pins.js'
 
 const ID = 'session-75271ba9-0162-4071-950e-28c4f96fc35f'
 const ID2 = 'session-56c6db0b-f8ae-4bbb-ba69-2b081720537c'
@@ -101,5 +101,24 @@ describe('pins file', () => {
     assert.equal(disk.pins[0].sessionId, ID)
     const missing = await readPinsDocument(join(dir, 'no-such.json'))
     assert.deepEqual(missing.pins, [])
+  })
+})
+
+describe('default pins path', () => {
+  // Pins point at session ids, and session ids only exist in one profile, so
+  // the file has to be resolved from the home this instance booted with.
+  it('follows $DSH_HOME instead of always landing in ~/.dsh', () => {
+    const previous = process.env.DSH_HOME
+    process.env.DSH_HOME = dir
+    try {
+      assert.equal(defaultPinsPath(), join(dir, 'session-navigator', 'pins.json'))
+      assert.equal(
+        defaultPinsPath('/profile/explicit'),
+        join('/profile/explicit', 'session-navigator', 'pins.json'),
+      )
+    } finally {
+      if (previous === undefined) delete process.env.DSH_HOME
+      else process.env.DSH_HOME = previous
+    }
   })
 })

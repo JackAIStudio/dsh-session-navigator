@@ -1,13 +1,20 @@
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
+import { resolveDshHome } from './home-paths.js'
 import { normalizePinDocument, togglePinnedSession } from './protocol.js'
 
 export const PINS_ROUTE = '/dsh-session-navigator/pins'
 export const PIN_ROUTE = '/dsh-session-navigator/pin'
 
-export function defaultPinsPath() {
-  return join(homedir(), '.dsh', 'session-navigator', 'pins.json')
+/**
+ * Pins belong to the profile that owns the sessions they point at, so the file
+ * lives under that profile's own `$DSH_HOME` — not a single shared `~/.dsh`
+ * file that every instance on the machine would read.
+ *
+ * @param configuredHome - explicit harness-home override from plugin config.
+ */
+export function defaultPinsPath(configuredHome) {
+  return join(resolveDshHome(configuredHome), 'session-navigator', 'pins.json')
 }
 
 export async function readPinsDocument(filePath) {

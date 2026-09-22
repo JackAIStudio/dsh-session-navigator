@@ -57,7 +57,7 @@ macOS 上点击会打开**普通 Google Chrome 标签**，不会跳进「mac工�
 
 ## 5. 检索方法
 
-需要查历史时，可读本机 `~/.dsh/storages/sessions-fts.db`，或根据用户给出的 session id / 标题定位。`turnIndex` 从 1 起算，对应第几个用户回合。
+需要查历史时，可读**当前实例那个档案**的 `$DSH_HOME/storages/sessions-fts.db`（打包版 JackDSH 的 `DSH_HOME` 通常不是 `~/.dsh`，先看 `GET /dsh-session-navigator/info` 里的 `dshHome`/`dbPath`），或根据用户给出的 session id / 标题定位。`turnIndex` 从 1 起算，对应第几个用户回合。
 
 ## 6. 另一个入口：`?q=<session id>`
 

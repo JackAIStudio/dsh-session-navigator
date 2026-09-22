@@ -1,6 +1,6 @@
 {
   "name": "dsh-session-navigator",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": true,
   "description": "增强左上角官方「搜索会话」（Session ID 命中 + 新窗口打开），侧栏会话 ⋯ 菜单可复制会话 ID、复制会话引用、置顶会话；粘贴引用到输入框会变成官方会话 chip。不劫持 Codex Timeline 搜索。",
   "type": "module",
@@ -15,6 +15,7 @@
     "index.js",
     "client.js",
     "protocol.js",
+    "home-paths.js",
     "session-summary.js",
     "pins.js",
     "chrome-tab.js",

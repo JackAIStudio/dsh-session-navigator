@@ -113,7 +113,7 @@ sessions.select: unknown session <id>
 0.3.4 就用这条官方增量通道把目标单独喂进去：
 
 1. 新宿主路由 `GET /dsh-session-navigator/session-summary?id=<session-id>`
-   读一个投影缓存文件（`~/.dsh/storages/session_projcache/sessions/<id>.json`），
+   读一个投影缓存文件（`$DSH_HOME/storages/session_projcache/sessions/<id>.json`），
    取出 `title` / `sessionListMetadata` / `identity.cwd`，拼成一条列表 summary。
    单次约 2ms，路径穿越由严格的 session id 形状校验挡掉。
 2. 客户端拿到后 `handleSessionAdded(summary)` 再 `open(id)`，守卫立刻放行，
@@ -141,7 +141,7 @@ DSH Markdown 不会把 `/?session=` 相对链接渲染成可点 `<a>`。配套 S
 
 侧栏会话行的 `⋯` 菜单在官方「重命名 / 分叉 / 归档」上方增加三项：
 
-1. **置顶会话 / 取消置顶**：钉到侧栏列表顶部的「置顶」分组，原行左侧留一条色标。状态写在宿主 `$DSH_HOME/session-navigator/pins.json`，刷新、换浏览器都还在。
+1. **置顶会话 / 取消置顶**：钉到侧栏列表顶部的「置顶」分组，原行左侧留一条色标。状态写在**本档案**的 `$DSH_HOME/session-navigator/pins.json`，刷新、换浏览器都还在；不同实例（打包版 / 命令行 / 不同 `DSH_HOME`）各存各的，不会互相串味。
 2. **复制会话 ID**：纯 `session-xxxxxxxx-…`，给搜索、磁盘路径、日志对照。
 3. **复制会话引用**：官方规范 mention，粘贴进输入框会变成和 `@` 点选一样的会话 chip（气泡图标 + 标题）。
 
@@ -174,6 +174,18 @@ ln -sfn "$HOME/Documents/dshspace/plugins/dsh-session-navigator/skill" "$HOME/.a
 ## 开源许可
 
 MIT License © 2026 [JackAIStudio](https://github.com/JackAIStudio)
+
+## 0.4.5 · 置顶 / 检索 / 直达改走本档案的 `$DSH_HOME`
+
+修一个「不该共享的共享了」：置顶、FTS 检索库、投影缓存三处默认路径写死成 `~/.dsh`，而会话是按档案（profile）分开存的 —— 打包版 JackDSH 跑在 `DSH_HOME=~/Library/Application Support/jackdsh/dsh-data`，命令行 `dsh web` 跑在默认 `~/.dsh`。于是同一个 `pins.json` 被所有实例共读：A 实例置顶的会话在 B 实例里根本不存在，只能显示「会话不可用」，点也点不开。
+
+- 新增 `home-paths.js`，按既有插件惯例解析宿主目录：`config.dshHome` > `$DSH_HOME` > `~/.dsh`（空串视为未设置，`~` 会展开）；
+- 置顶写本档案的 `$DSH_HOME/session-navigator/pins.json`（README 一直是这么写的，代码没跟上）；
+- 会话搜索库默认读本档案的 `$DSH_HOME/storages/sessions-fts.db`；
+- 深链单会话摘要默认读本档案的 `$DSH_HOME/storages/session_projcache/sessions/<id>.json`；
+- `GET /dsh-session-navigator/info` 增加 `dshHome` 字段，方便一眼看出实例到底在哪个档案里跑。
+
+升级后各实例只会看到自己的置顶；跨档案遗留的那条会显示成「会话不可用」，点右侧 ✕ 取消即可。
 
 ## 0.4.4 · 会话置顶
 

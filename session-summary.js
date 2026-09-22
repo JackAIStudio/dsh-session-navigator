@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
-import { homedir } from 'node:os'
 import { join } from 'node:path'
+import { resolveDshHome } from './home-paths.js'
 
 export const SESSION_SUMMARY_ROUTE = '/dsh-session-navigator/session-summary'
 
@@ -18,10 +18,16 @@ export function isSessionId(value) {
 
 /**
  * Locate the Harness projection cache this profile writes.
+ *
+ * The cache is per profile, exactly like the sessions it projects: reading the
+ * default `~/.dsh` cache from an app profile would summarize another profile's
+ * corpus and miss the app's own sessions.
+ *
+ * @param configuredHome - explicit harness-home override from plugin config.
  * @returns the sessions directory, or null when the profile has none.
  */
-export function defaultProjectionCacheDir() {
-  const dir = join(homedir(), '.dsh', 'storages', 'session_projcache', 'sessions')
+export function defaultProjectionCacheDir(configuredHome) {
+  const dir = join(resolveDshHome(configuredHome), 'storages', 'session_projcache', 'sessions')
   return existsSync(dir) ? dir : null
 }
 
