@@ -26,7 +26,7 @@ export const inject = ['webServer']
 
 const SEARCH_ROUTE = '/dsh-session-navigator/search'
 const INFO_ROUTE = '/dsh-session-navigator/info'
-const VERSION = '0.4.5'
+const VERSION = '0.4.6'
 const BODY_LIMIT = 2048
 
 function sendJson(res, statusCode, value) {

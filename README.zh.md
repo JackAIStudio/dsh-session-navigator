@@ -175,6 +175,21 @@ ln -sfn "$HOME/Documents/dshspace/plugins/dsh-session-navigator/skill" "$HOME/.a
 
 MIT License © 2026 [JackAIStudio](https://github.com/JackAIStudio)
 
+## 0.4.6 · 侧栏补齐 fork 会话的标题（修「标题回退成目录名」）
+
+fork 出来的会话在侧栏显示成项目目录名（`2026-09-21` 这种），点开一次才有标题 —— 这是宿主列表的一个缺陷，不是数据丢了。
+
+**根因**：fork 会话在官方侧是**种子会话**（header 带 `isSeeded` 和非零继承前缀）。官方列表为「未打开的会话」取投影列时，对种子会话**直接放弃读投影缓存**（`dsh-api-session-controller` 的 `projectionsFor` 里那句 `header.isSeeded ? undefined : …`）：缓存记录的 identity 要求精确的继承前缀长度，而列表侧只传得出 0，永远匹配不上，于是它选择不给。`title` 单元格缺失后，显示标题逐级回退成 `workspaceTitleOf(cwd)` 也就是项目目录名。一旦点开会话，它变成活会话、改走带序号的精确路径，标题立刻出现 —— 这正是「点一下就有名字」的由来。实测本机：打包版档案 32 条、dev 档案 45 条会退化的行**全部**是种子会话，且标题在投影缓存里 100% 都在。
+
+**做法**：不碰官方代码，借官方自己的增量通道补。`handleSessionAdded(summary)` 会把 `summary.projections` 写进该会话的投影 store，而侧栏行与置顶行读的正是同一个 store，所以标题随官方渲染链路自然出现，无需改写 DOM。
+
+- 列表每轮更新后扫描「有 `cwd` 但没有标题投影」的行，按会话 id 去重，逐个从本插件既有的 `GET /dsh-session-navigator/session-summary`（零 I/O，只读该会话一个投影缓存文件）取标题并注入；
+- 每个会话一生只发一次本机环回请求，补上标题后该行自行退出扫描；并发上限 3，缓存里确实没有标题的少数会话不反复追问；
+- 合并走官方 upsert 的「只填空缺」分支（`cwd` / `parentSessionId` / `origin` 均为原本缺失才补，`updatedAt` 与 `running` 完全不碰），不破坏既有行；
+- 投影按 seq 高者胜，注入的是缓存水位（低于活会话后续事件），会话一旦被打开就会被更新的值接管。
+
+宿主侧对应修复要到 `@deepseek-ai/dsh` 的 `0.1.7-alpha.1` 才落地（`0.1.5-rc.3` 与 `0.1.6-alpha.2` 仍带这个拦截）；本插件在 0.1.5 上先行补齐。
+
 ## 0.4.5 · 置顶 / 检索 / 直达改走本档案的 `$DSH_HOME`
 
 修一个「不该共享的共享了」：置顶、FTS 检索库、投影缓存三处默认路径写死成 `~/.dsh`，而会话是按档案（profile）分开存的 —— 打包版 JackDSH 跑在 `DSH_HOME=~/Library/Application Support/jackdsh/dsh-data`，命令行 `dsh web` 跑在默认 `~/.dsh`。于是同一个 `pins.json` 被所有实例共读：A 实例置顶的会话在 B 实例里根本不存在，只能显示「会话不可用」，点也点不开。

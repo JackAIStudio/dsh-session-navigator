@@ -1043,6 +1043,77 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * 补齐官方列表不肯给的标题投影（侧栏「标题回退成目录名」的根因）。
+     *
+     * fork 出来的会话在官方侧是种子会话（header.isSeeded + 非零继承前缀）。
+     * 官方列表在为「未打开的会话」取投影列时，对种子会话直接放弃读投影缓存：
+     * 缓存记录的 identity 要求精确的继承前缀长度，而列表侧只传得出 0，永远匹配
+     * 不上，于是它宁可不给（dsh-api-session-controller 的 projectionsFor 里那个
+     * `header.isSeeded ? undefined : …`）。title 单元格因此缺失，显示标题回退成
+     * 项目目录名（displayTitleOf → workspaceTitleOf(cwd)）。而一旦点开该会话，它
+     * 变成活会话、改走带序号的精确路径，标题立刻出现——这就是「点一下就有名字」
+     * 的由来。本机实测：打包版 32 条、dev 档案 45 条会退化的行，全部是种子会话，
+     * 且它们的标题在投影缓存里 100% 都在。
+     *
+     * 这里不碰官方代码，只借官方自己的增量通道补：handleSessionAdded(summary)
+     * 会把 summary.projections 写进该会话的投影 store，而侧栏行与置顶行读的正是
+     * 同一个 store，所以注入后标题随官方渲染链路自然出现，无需改写 DOM。合并走的
+     * 是 upsert 的「只填空缺」分支（cwd / parent / origin 均为原本缺失才补，
+     * updatedAt 与 running 完全不碰），不会破坏既有行；投影按 seq 高者胜，注入的是
+     * 缓存水位（低于活会话的后续事件），会话一旦被打开就会被更新的值接管。
+     */
+    const TITLE_FILL_CONCURRENCY = 3
+    const titleFillAttempted = new Set()
+    const titleFillQueue = []
+    let titleFillBusy = 0
+
+    function fillMissingSessionTitles() {
+      const sessions = sessionsRef
+      if (!sessions || typeof sessions.handleSessionAdded !== 'function') return
+      const byId = sessions.list?.getSnapshot?.()?.byId
+      if (!byId) return
+      for (const row of Object.values(byId)) {
+        // 已有标题投影：官方渲染的就是真标题，不干预。
+        if (!row || row.title) continue
+        // 没有 cwd 的行不会回退成目录名。
+        if (typeof row.cwd !== 'string' || row.cwd === '') continue
+        const id = normalizeSessionId(row.id)
+        // 每个会话只试一次：缓存里没有标题的少数会话不反复追问。
+        if (!id || titleFillAttempted.has(id)) continue
+        titleFillAttempted.add(id)
+        titleFillQueue.push(id)
+      }
+      pumpTitleFill()
+    }
+
+    function pumpTitleFill() {
+      while (titleFillBusy < TITLE_FILL_CONCURRENCY && titleFillQueue.length > 0) {
+        const id = titleFillQueue.shift()
+        titleFillBusy += 1
+        fetchTitleSummary(id).finally(() => {
+          titleFillBusy -= 1
+          pumpTitleFill()
+        })
+      }
+    }
+
+    function fetchTitleSummary(sessionId) {
+      const sessions = sessionsRef
+      return fetch(`${SUMMARY_ENDPOINT}?id=${encodeURIComponent(sessionId)}`, {
+        headers: { accept: 'application/json' },
+      })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const summary = data?.ok === true ? data.summary : null
+          if (!summary || normalizeSessionId(summary.sessionId) !== sessionId) return
+          // 只补标题：没有标题的摘要注进去也没有意义。
+          if (!summary.projections?.values?.title) return
+          sessions?.handleSessionAdded?.(summary)
+        })
+        .catch(() => {})
+    }
+
+    /**
      * 核心切换逻辑：把「目标会话成为当前会话」当成一个必须完成的任务。
      * 与旧实现的区别：
      * - 不再 8 秒放弃。列表晚到（本机 400+ 会话时实测要几分钟）也一定会被兑现；
@@ -2555,7 +2626,7 @@ window.__ModuleLoader__.load({
       // 排障入口：控制台可查深链状态、可手动重放一次直达。
       try {
         window.__dshSessionNavigator = {
-          version: '0.4.4',
+          version: '0.4.6',
           openInNewWindow,
           openSessionInThisWindow,
           get state() {
@@ -2579,8 +2650,11 @@ window.__ModuleLoader__.load({
       if (typeof sessionsRef.list?.subscribe === 'function') {
         pinsListUnsub = sessionsRef.list.subscribe(() => {
           // 会话列表更新只重渲染内存置顶结构，绝不发起网络 fetch 挤占连接池
+          // （例外：补齐缺失标题，见 fillMissingSessionTitles——它按会话 id 去重，
+          //   每个会话一生只发一次本机环回请求，补上标题后该行会自行退出扫描）
           renderPinnedGroup()
           markOfficialPinnedRows()
+          fillMissingSessionTitles()
         })
       }
 
@@ -2614,6 +2688,8 @@ window.__ModuleLoader__.load({
         }
       }
       runEnhance()
+      // 列表若在订阅之前就已加载，订阅回调不会再补一次，这里兜住首屏。
+      fillMissingSessionTitles()
       observer = new MutationObserver(() => {
         injectSessionCopyMenuItems()
         renderPinnedGroup()
