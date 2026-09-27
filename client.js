@@ -3,9 +3,17 @@ window.__ModuleLoader__.load({
   factory: (require) => {
     const module = { exports: {} }
 
+    let React = null
+    try { React = require('react') } catch {}
+    if (!React && typeof window !== 'undefined') React = window.React
+    const h = React?.createElement
+
+    let primitives = null
+    try { primitives = require('@deepseek-ai/dsh-client-ui-primitives') } catch {}
+
     const SESSION_ID_RE = /session-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
     const CSS_STYLES = `
-      /* Official composer @ session chip (ReferenceChip): one 6px plate, bubble + title. */
+      /* Official DSH 0.1.7 composer & message reference chip styles */
       code.dsh-session-anchor-host {
         display: contents !important;
         padding: 0 !important;
@@ -23,41 +31,52 @@ window.__ModuleLoader__.load({
       }
       .dsh-session-anchor-capsule {
         display: inline-flex !important;
-        align-items: center !important;
+        align-items: baseline !important;
         gap: 3px !important;
         box-sizing: border-box !important;
-        height: 22px !important;
         max-width: 240px !important;
         margin: 0 2px !important;
-        padding: 0 6px !important;
+        padding: 0 4px !important;
         border: none !important;
-        border-radius: 6px !important;
-        background: var(--dsw-alias-interactive-bg-hover, rgba(128, 128, 128, 0.12)) !important;
+        border-radius: var(--dsw-radius-sm, 4px) !important;
+        background: transparent !important;
         color: var(--dsw-alias-state-business-primary, #2563eb) !important;
         font: inherit !important;
-        font-size: 13px !important;
-        font-weight: 400 !important;
+        font-weight: 500 !important;
         font-family: var(--dsw-font-family, inherit) !important;
-        line-height: 22px !important;
+        line-height: inherit !important;
         text-decoration: none !important;
         cursor: pointer !important;
         user-select: none !important;
-        vertical-align: bottom !important;
+        vertical-align: baseline !important;
+        transition: background-color 0.15s ease !important;
       }
       .dsh-session-anchor-capsule:hover {
-        background: var(--dsw-alias-button-ghost-active-fill, rgba(128, 128, 128, 0.18)) !important;
+        background: var(--dsw-alias-state-business-tertiary, rgba(37, 99, 235, 0.08)) !important;
       }
       .dsh-session-anchor-icon {
         flex: none;
         width: 14px;
         height: 14px;
-        display: block;
+        display: inline-block;
+        align-self: center;
+        vertical-align: -0.125em;
       }
       .dsh-session-anchor-label {
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+      /* Clickable enhancement for official 0.1.7 refChip spans in user/assistant messages */
+      [data-ref-chip="session"] {
+        cursor: pointer !important;
+        border-radius: var(--dsw-radius-sm, 4px) !important;
+        padding: 0 2px !important;
+        transition: background-color 0.15s ease !important;
+      }
+      [data-ref-chip="session"]:hover {
+        background-color: var(--dsw-alias-state-business-tertiary, rgba(37, 99, 235, 0.08)) !important;
       }
       [data-dsh-nav-lead-hidden] {
         display: none !important;
@@ -324,8 +343,9 @@ window.__ModuleLoader__.load({
     let deepLinkHint = null
     const SESSION_REFERENCE_SCHEME = 'dsh-session:'
     const SESSION_MENTION_RE = /@\[((?:\\.|[^\\\]])*)\]\((dsh-session:[A-Za-z0-9_-]+)\)|(dsh-session:[A-Za-z0-9_-]+)/gu
-    const COPY_ID_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M3.5 11H3a1 1 0 0 1-1-1V3.5A1.5 1.5 0 0 1 3.5 2h6.5a1 1 0 0 1 1 1v.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
-    const COPY_MENTION_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="5.25" stroke="currentColor" stroke-width="1.25"/><path d="M10.2 8.15c0 1.15-.84 1.85-1.95 1.85-.46 0-.86-.12-1.16-.34" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/><circle cx="8.15" cy="8.05" r=".7" fill="currentColor"/><path d="M6.55 6.35c.28-.38.78-.6 1.4-.6.96 0 1.7.58 1.7 1.55v1.7" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const COPY_ID_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="5" y="5" width="8" height="9" rx="1.5" stroke="currentColor" stroke-width="1.25"/><path d="M3.5 11H3a1 1 0 0 1-1-1V3.5A1.5 1.5 0 0 1 3.5 2h6.5a1 1 0 0 1 1 1v.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
+    const SESSION_ICON_INNER_SVG = '<path d="M5 6.75H11" stroke="currentColor"/><path d="M5 9H8" stroke="currentColor"/><path d="M2.37067 11.2497C1.5872 9.89252 1.32042 8.29798 1.61945 6.7597C1.91847 5.22141 2.76317 3.84293 3.99801 2.87809C5.23285 1.91325 6.7747 1.427 8.33964 1.50888C9.90458 1.59076 11.3873 2.23526 12.5147 3.32369C13.6422 4.41232 14.3384 5.8717 14.4751 7.43304C14.6118 8.99438 14.1797 10.5525 13.2585 11.8205C12.3372 13.0885 10.9889 13.9809 9.4617 14.3334C8.18666 14.6277 6.8587 14.529 5.64964 14.0601C5.17095 13.8745 4.76937 13.4929 4.26509 13.3963C3.67389 13.2832 2.95232 13.5595 2.0377 14.3334" stroke="currentColor"/>'
+    const COPY_MENTION_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" stroke-width="1">${SESSION_ICON_INNER_SVG}</svg>`
     const PIN_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8.2 1.8l5 5-1.35 1.05-1.15 3.2-1.7-1.7-3.55 3.55-.95-.95 3.55-3.55-1.7-1.7 3.2-1.15L8.2 1.8z" stroke="currentColor" stroke-width="1.25" stroke-linejoin="round"/><path d="M6.4 9.6L3.2 14" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
     const PIN_REMOVE_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
     const PINS_ROUTE = '/dsh-session-navigator/pins'
@@ -461,21 +481,17 @@ window.__ModuleLoader__.load({
       return rest.length === 0
     }
 
-    const SESSION_REF_ICON_PATH =
-      'M8 0.597656C3.91296 0.597656 0.599716 3.91103 0.599609 7.99805C0.599609 9.13171 0.854567 10.2079 1.31152 11.1699L1.59277 11.7607L2.77441 11.1992L2.49414 10.6084L2.36035 10.3076C2.06865 9.59612 1.90723 8.81645 1.90723 7.99805C1.90733 4.63362 4.63554 1.90625 8 1.90625C11.3644 1.90635 14.0917 4.63368 14.0918 7.99805C14.0918 11.3625 11.3644 14.0907 8 14.0908C7.311 14.0908 6.80642 14.0414 6.35938 13.918C5.919 13.7963 5.50105 13.5929 5.00098 13.2441C4.26805 12.7329 3.21756 12.5526 2.35156 13.0996L2.33789 13.1084L2.32422 13.1182L1.74805 13.5234L2.18164 14.8184L3.05957 14.2002C3.37505 14.0068 3.84248 14.0319 4.25195 14.3174C4.84447 14.7307 5.39718 15.009 6.01172 15.1787C6.61963 15.3465 7.25579 15.3984 8 15.3984C12.087 15.3983 15.4004 12.0851 15.4004 7.99805C15.4003 3.9111 12.087 0.59776 8 0.597656ZM4.56836 8.50977V9.80371H8.12402V8.50977H4.56836ZM4.56836 7.30078H11.4619V6.00684H4.56836V7.30078Z'
-
-    function createSessionRefIcon() {
+    function createSessionRefIcon(size = 14) {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
-      svg.setAttribute('width', '14')
-      svg.setAttribute('height', '14')
+      svg.setAttribute('width', String(size))
+      svg.setAttribute('height', String(size))
       svg.setAttribute('viewBox', '0 0 16 16')
       svg.setAttribute('fill', 'none')
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
       svg.setAttribute('aria-hidden', 'true')
+      svg.setAttribute('stroke-width', '1')
       svg.classList.add('dsh-session-anchor-icon')
-      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-      path.setAttribute('d', SESSION_REF_ICON_PATH)
-      path.setAttribute('fill', 'currentColor')
-      svg.appendChild(path)
+      svg.innerHTML = SESSION_ICON_INNER_SVG
       return svg
     }
 
@@ -1383,11 +1399,17 @@ window.__ModuleLoader__.load({
       hideOfficialEmpty(host, true)
     }
 
-    // 核心方法：基于 React Fiber 100% 精确提取 Session ID，消灭脆弱的文本猜测
+    // 核心方法：支持原生 data-row-key 与 React Fiber，100% 精确提取 Session ID
     function getSessionIdFromElement(el) {
       if (!(el instanceof Element)) return null
       const direct = el.getAttribute('data-dsh-session') || el.dataset?.dshSession
       if (direct) return normalizeSessionId(direct)
+
+      // 优先从官方原生属性 data-row-key="session:..." 提取，直接可靠
+      const rowKey = el.closest('[data-row-key]')?.getAttribute('data-row-key')
+      if (rowKey && rowKey.startsWith('session:')) {
+        return normalizeSessionId(rowKey.slice(8))
+      }
 
       const target = el.closest('[role="treeitem"]') || el
       const key = Object.keys(target).find((k) => k.startsWith('__reactFiber$'))
@@ -1735,11 +1757,11 @@ window.__ModuleLoader__.load({
       closeOpenMenus()
     }
 
-    async function copySessionMention(sessionId) {
+    async function copySessionMention(sessionId, displayTitle) {
       const sid = normalizeSessionId(sessionId)
       if (!sid) return
       const labels = sessionCopyMenuLabels(mentionLocale())
-      const label = sessionTitleOf(sid) || sid
+      const label = displayTitle || sessionTitleOf(sid) || sid
       const mention = formatSessionReferenceMention(sid, label)
       const ok = await writeClipboard(mention)
       showCopyToast(ok ? labels.copiedMention : labels.failed)
@@ -1782,48 +1804,169 @@ window.__ModuleLoader__.load({
       return items[0] || null
     }
 
+    let slotsMenuRegistered = false
+
+    function renderCopyIdIconNode() {
+      if (!h) return null
+      return h('svg', {
+        width: 14,
+        height: 14,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        'aria-hidden': 'true',
+        style: { width: '14px', height: '14px', flex: 'none' },
+      }, [
+        h('rect', { x: 5, y: 5, width: 8, height: 9, rx: 1.5, stroke: 'currentColor', strokeWidth: 1.25 }),
+        h('path', { d: 'M3.5 11H3a1 1 0 0 1-1-1V3.5A1.5 1.5 0 0 1 3.5 2h6.5a1 1 0 0 1 1 1v.5', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round' }),
+      ])
+    }
+
+    function renderCopyMentionIconNode() {
+      if (!h) return null
+      return h('svg', {
+        width: 14,
+        height: 14,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        xmlns: 'http://www.w3.org/2000/svg',
+        'aria-hidden': 'true',
+        strokeWidth: 1,
+        style: { width: '14px', height: '14px', flex: 'none' },
+      }, [
+        h('path', { d: 'M5 6.75H11', stroke: 'currentColor' }),
+        h('path', { d: 'M5 9H8', stroke: 'currentColor' }),
+        h('path', { d: 'M2.37067 11.2497C1.5872 9.89252 1.32042 8.29798 1.61945 6.7597C1.91847 5.22141 2.76317 3.84293 3.99801 2.87809C5.23285 1.91325 6.7747 1.427 8.33964 1.50888C9.90458 1.59076 11.3873 2.23526 12.5147 3.32369C13.6422 4.41232 14.3384 5.8717 14.4751 7.43304C14.6118 8.99438 14.1797 10.5525 13.2585 11.8205C12.3372 13.0885 10.9889 13.9809 9.4617 14.3334C8.18666 14.6277 6.8587 14.529 5.64964 14.0601C5.17095 13.8745 4.76937 13.4929 4.26509 13.3963C3.67389 13.2832 2.95232 13.5595 2.0377 14.3334', stroke: 'currentColor' }),
+      ])
+    }
+
+    function renderCopySessionIdItem(props) {
+      if (!h) return null
+      const sid = props?.sessionId
+      const useMenuOpenState = props?.useMenuOpenState
+      const [, setMenuOpen] = typeof useMenuOpenState === 'function' ? useMenuOpenState() : [null, () => {}]
+      const labels = sessionCopyMenuLabels(mentionLocale())
+      const icon = primitives?.IconCopyOutlineRegular
+        ? h(primitives.IconCopyOutlineRegular, { size: 14 })
+        : renderCopyIdIconNode()
+
+      if (primitives?.MenuItemButton) {
+        return h(primitives.MenuItemButton, {
+          icon,
+          onSelect: () => {
+            setMenuOpen(false)
+            void copySessionId(sid)
+          },
+          children: labels.id,
+        })
+      }
+
+      return h('div', { className: '_itemWrap_gzo7u_90', 'data-dsh-copy-menu': 'id' }, [
+        h('button', {
+          type: 'button',
+          role: 'menuitem',
+          className: '_item_gzo7u_90',
+          onClick: (e) => {
+            e.stopPropagation()
+            setMenuOpen(false)
+            void copySessionId(sid)
+          },
+        }, [
+          h('span', { className: '_itemIcon_gzo7u_148' }, [icon]),
+          h('span', { className: '_itemLabel_gzo7u_190' }, labels.id),
+        ]),
+      ])
+    }
+
+    function renderCopySessionMentionItem(props) {
+      if (!h) return null
+      const sid = props?.sessionId
+      const title = props?.displayTitle
+      const useMenuOpenState = props?.useMenuOpenState
+      const [, setMenuOpen] = typeof useMenuOpenState === 'function' ? useMenuOpenState() : [null, () => {}]
+      const labels = sessionCopyMenuLabels(mentionLocale())
+      const icon = primitives?.ReferenceIconRegular
+        ? h(primitives.ReferenceIconRegular, { kind: 'session', size: 14 })
+        : renderCopyMentionIconNode()
+
+      if (primitives?.MenuItemButton) {
+        return h(primitives.MenuItemButton, {
+          icon,
+          onSelect: () => {
+            setMenuOpen(false)
+            void copySessionMention(sid, title)
+          },
+          children: labels.mention,
+        })
+      }
+
+      return h('div', { className: '_itemWrap_gzo7u_90', 'data-dsh-copy-menu': 'mention' }, [
+        h('button', {
+          type: 'button',
+          role: 'menuitem',
+          className: '_item_gzo7u_90',
+          onClick: (e) => {
+            e.stopPropagation()
+            setMenuOpen(false)
+            void copySessionMention(sid, title)
+          },
+        }, [
+          h('span', { className: '_itemIcon_gzo7u_148' }, [icon]),
+          h('span', { className: '_itemLabel_gzo7u_190' }, labels.mention),
+        ]),
+      ])
+    }
+
     function prepareClonedCopyItem(wrap, { key, sessionId, label, iconSvg, onCopy }) {
       wrap.dataset.dshCopyMenu = key
       wrap.dataset.dshSession = sessionId
       wrap.querySelector('[class*="check"]')?.remove()
+      wrap.querySelectorAll('[class*="shortcut"], [class*="key"], kbd, [aria-keyshortcuts]').forEach((el) => el.remove())
       const btn = wrap.querySelector('[role="menuitem"], button') || wrap
       if (btn instanceof HTMLElement) {
         btn.dataset.dshCopyMenu = key
         btn.dataset.dshSession = sessionId
         btn.removeAttribute('aria-haspopup')
         btn.removeAttribute('aria-expanded')
+        btn.removeAttribute('aria-keyshortcuts')
         btn.removeAttribute('disabled')
+        btn.querySelectorAll('[class*="shortcut"], [class*="key"], kbd, [aria-keyshortcuts]').forEach((el) => el.remove())
       }
       replaceMenuItemLabel(wrap, label)
-      const svg = wrap.querySelector('svg')
-      if (svg) svg.outerHTML = iconSvg
+
+      // 确保图标容器和 SVG 完整存在且样式对齐
+      let iconSpan = btn.querySelector('[class*="itemIcon"]')
+      if (!iconSpan && btn instanceof HTMLElement) {
+        iconSpan = document.createElement('span')
+        iconSpan.className = '_itemIcon_gzo7u_148 itemIcon'
+        btn.insertBefore(iconSpan, btn.firstChild)
+      }
+      if (iconSpan) {
+        iconSpan.innerHTML = iconSvg
+      } else {
+        const svg = wrap.querySelector('svg')
+        if (svg) svg.outerHTML = iconSvg
+      }
+
       const handle = (event) => {
-        event.preventDefault()
         event.stopPropagation()
-        event.stopImmediatePropagation()
         onCopy()
       }
-      wrap.addEventListener('pointerdown', handle, true)
-      wrap.addEventListener('click', handle, true)
-      btn.addEventListener('pointerdown', handle, true)
+      // 不在 pointerdown 上阻止默认行为，统一走正常的 click 交互
       btn.addEventListener('click', handle, true)
       return wrap
     }
 
     function injectSessionCopyMenuItems() {
+      if (slotsMenuRegistered) return
       const menu = findOpenSessionMenu()
       if (!menu) return
       const sessionId = sessionIdForOpenMenu()
       if (!sessionId) return
-      const pinned = isSessionPinned(pinsDoc, sessionId)
       const existingId = menu.querySelector('[data-dsh-copy-menu="id"]')
       const existingMention = menu.querySelector('[data-dsh-copy-menu="mention"]')
-      const existingPin = menu.querySelector('[data-dsh-copy-menu="pin"]')
-      if (existingId && existingMention && existingPin
+      if (existingId && existingMention
         && existingId.getAttribute('data-dsh-session') === sessionId
-        && existingMention.getAttribute('data-dsh-session') === sessionId
-        && existingPin.getAttribute('data-dsh-session') === sessionId
-        && existingPin.getAttribute('data-dsh-pinned') === (pinned ? '1' : '0')) {
+        && existingMention.getAttribute('data-dsh-session') === sessionId) {
         return
       }
       menu.querySelectorAll('[data-dsh-copy-menu]').forEach((el) => el.remove())
@@ -1833,14 +1976,6 @@ window.__ModuleLoader__.load({
       const slot = sessionMenuItemHost(sample)
       if (!slot) return
       const copyLabels = sessionCopyMenuLabels(mentionLocale())
-      const pinLabels = sessionPinMenuLabels(mentionLocale())
-      const mentionWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
-        key: 'mention',
-        sessionId,
-        label: copyLabels.mention,
-        iconSvg: COPY_MENTION_ICON_SVG,
-        onCopy: () => { copySessionMention(sessionId) },
-      })
       const idWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
         key: 'id',
         sessionId,
@@ -1848,18 +1983,14 @@ window.__ModuleLoader__.load({
         iconSvg: COPY_ID_ICON_SVG,
         onCopy: () => { copySessionId(sessionId) },
       })
-      const pinWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
-        key: 'pin',
+      const mentionWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
+        key: 'mention',
         sessionId,
-        label: pinned ? pinLabels.unpin : pinLabels.pin,
-        iconSvg: PIN_ICON_SVG,
-        onCopy: () => { setSessionPinned(sessionId, !pinned) },
+        label: copyLabels.mention,
+        iconSvg: COPY_MENTION_ICON_SVG,
+        onCopy: () => { copySessionMention(sessionId) },
       })
-      pinWrap.setAttribute('data-dsh-pinned', pinned ? '1' : '0')
-      const pinBtn = pinWrap.querySelector('[role="menuitem"], button')
-      if (pinBtn) pinBtn.setAttribute('data-dsh-pinned', pinned ? '1' : '0')
       try {
-        slot.host.insertBefore(pinWrap, slot.before)
         slot.host.insertBefore(idWrap, slot.before)
         slot.host.insertBefore(mentionWrap, slot.before)
       } catch (error) {
@@ -1985,118 +2116,82 @@ window.__ModuleLoader__.load({
     }
 
     function markOfficialPinnedRows() {
-      const pinned = new Set(pinsDoc.pins.map((item) => item.sessionId))
-      for (const row of document.querySelectorAll('[role="treeitem"][data-dsh-session]')) {
-        if (row.closest(`#${PIN_GROUP_ID}`)) continue
-        const id = normalizeSessionId(row.getAttribute('data-dsh-session'))
-        if (id && pinned.has(id)) row.setAttribute('data-dsh-pinned', 'true')
-        else row.removeAttribute('data-dsh-pinned')
-      }
+      // 0.1.7 官方原生接管置顶排序与色标，无需外挂标记
     }
 
     function renderPinnedGroup() {
-      const tree = findSessionTree()
-      const existing = document.getElementById(PIN_GROUP_ID)
-      if (!tree) {
-        existing?.remove()
-        return
-      }
-      if (pinsDoc.pins.length === 0) {
-        existing?.remove()
-        return
-      }
-      const signature = pinGroupSignature()
-      if (existing && existing.getAttribute('data-dsh-pin-signature') === signature && existing.parentElement === tree) {
-        return
-      }
-      const labels = sessionPinMenuLabels(mentionLocale())
-      const locale = mentionLocale()
-      const snap = sessionsRef?.list?.getSnapshot?.()
-      const now = Date.now()
-      const group = document.createElement('div')
-      group.id = PIN_GROUP_ID
-      group.setAttribute('data-dsh-nav-internal', 'true')
-      group.setAttribute('data-dsh-pin-signature', signature)
-      const header = document.createElement('div')
-      header.className = 'dsh-nav-pin-header'
-      header.innerHTML = `${PIN_ICON_SVG}<span></span>`
-      header.querySelector('span').textContent = `${labels.group} · ${pinsDoc.pins.length}`
-      group.appendChild(header)
-      for (const item of pinsDoc.pins) {
-        const rowSnap = snap?.byId?.[item.sessionId]
-        const title = rowSnap?.displayTitle || rowSnap?.title || labels.missing
-        const missing = !rowSnap || rowSnap.blank
-        const row = document.createElement('div')
-        row.className = 'dsh-nav-pin-row' + (missing ? ' is-missing' : '')
-        row.setAttribute('role', 'treeitem')
-        row.setAttribute('data-dsh-session', item.sessionId)
-        row.setAttribute('aria-selected', snap?.current === item.sessionId ? 'true' : 'false')
-        row.title = item.sessionId
-        const icon = document.createElement('span')
-        icon.className = 'dsh-nav-pin-row-icon'
-        icon.innerHTML = PIN_ICON_SVG
-        const name = document.createElement('span')
-        name.className = 'dsh-nav-pin-row-title'
-        name.textContent = title
-        const time = document.createElement('span')
-        time.className = 'dsh-nav-pin-row-time'
-        time.textContent = compactRelativeTime(rowSnap?.updatedAt, now, locale)
-        const unpin = document.createElement('button')
-        unpin.type = 'button'
-        unpin.className = 'dsh-nav-pin-row-unpin'
-        unpin.title = labels.unpin
-        unpin.setAttribute('aria-label', labels.unpin)
-        unpin.innerHTML = PIN_REMOVE_ICON_SVG
-        unpin.addEventListener('pointerdown', (event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        })
-        unpin.addEventListener('click', (event) => {
-          event.preventDefault()
-          event.stopPropagation()
-          setSessionPinned(item.sessionId, false)
-        })
-        row.addEventListener('click', (event) => {
-          if (event.target.closest('.dsh-nav-pin-row-unpin')) return
-          if (!sessionsRef) return
-          try { sessionsRef.open(item.sessionId) } catch (error) {
-            console.warn('[dsh-session-navigator] open pinned session failed:', error)
-          }
-        })
-        row.append(icon, name, time, unpin)
-        group.appendChild(row)
-      }
-      existing?.remove()
-      tree.insertBefore(group, tree.firstChild)
+      // 0.1.7 官方原生内置置顶分组，直接移除插件旧版自定义分组
+      document.getElementById(PIN_GROUP_ID)?.remove()
     }
 
     function getComposerShell() {
-      const current = sessionsRef?.list?.getSnapshot?.()?.current
-      if (!current) return null
       const conversation = (typeof ctxGetConversation === 'function' ? ctxGetConversation() : null) || conversationRef
       const input = conversation?.input
-      if (!input || typeof input.for !== 'function') return null
-      try {
-        const actx = sessionsRef.scope?.(current) || sessionsRef.binding?.(current)?.ctx
-        if (!actx) return null
-        return input.for(actx)
-      } catch {
-        return null
+      if (!input) return null
+
+      // 1. 获取当前会话 ID
+      let currentId = null
+      const listSnap = sessionsRef?.list?.getSnapshot?.()
+      if (listSnap?.byId) {
+        currentId = Object.values(listSnap.byId).find((s) => (s?.retainedBy?.mainView ?? 0) > 0)?.id
       }
+      if (!currentId && uiWorkspaceRef?.mainReference?.sessionId) {
+        currentId = uiWorkspaceRef.mainReference.sessionId
+      }
+      if (!currentId) {
+        const selectedRow = document.querySelector('[role="treeitem"][aria-selected="true"]')
+        currentId = getSessionIdFromElement(selectedRow)
+      }
+      if (!currentId) {
+        try {
+          const stored = JSON.parse(localStorage.getItem('dsh.sessions.current') || '{}')
+          currentId = normalizeSessionId(stored?.sessionId)
+        } catch {}
+      }
+
+      // 2. 根据 currentId 取得对应 Shell
+      if (currentId) {
+        if (typeof input.shell === 'function') {
+          try {
+            const s = input.shell(currentId)
+            if (s) return s
+          } catch {}
+        }
+        try {
+          const actx = sessionsRef?.scope?.(currentId) || sessionsRef?.binding?.(currentId)?.ctx
+          if (actx && typeof input.for === 'function') {
+            const s = input.for(actx)
+            if (s) return s
+          }
+        } catch {}
+      }
+
+      // 3. 兜底：直接从 input.shells 抓取未销毁的 active shell
+      if (input.shells instanceof Map && input.shells.size > 0) {
+        for (const s of input.shells.values()) {
+          if (s && !s.disposed) return s
+        }
+      }
+
+      return null
     }
 
     function insertSessionChip(item, span) {
       const shell = getComposerShell()
       if (!shell || typeof shell.insertReference !== 'function') return false
-      const label = sessionTitleOf(item.sessionId) || item.label
+      const label = sessionTitleOf(item.sessionId) || item.label || item.sessionId
+      const mention = formatSessionReferenceMention(item.sessionId, label)
       try {
+        const draftRev = Number.isFinite(span?.draftRev)
+          ? span.draftRev
+          : (typeof shell.rev === 'number' ? shell.rev : 0)
         return shell.insertReference({
           source: 'reference',
-          ref: item.mention,
+          ref: mention,
           label,
           appearance: 'session',
-          clipboardText: item.mention,
-        }, span) === true
+          clipboardText: mention,
+        }, { ...span, draftRev }) === true
       } catch (error) {
         console.warn('[dsh-session-navigator] insertReference failed:', error)
         return false
@@ -2108,10 +2203,18 @@ window.__ModuleLoader__.load({
       if (!shell) return false
       const snapshot = typeof shell.state?.getSnapshot === 'function' ? shell.state.getSnapshot() : shell.snapshot
       if (!snapshot || (snapshot.phase !== 'plain' && snapshot.phase !== 'claimed')) return false
-      const caret = typeof shell.caretSpan === 'function' ? shell.caretSpan() : null
-      const start = Number.isFinite(caret?.start) ? caret.start : (snapshot.draft || '').length
-      const end = Number.isFinite(caret?.end) ? caret.end : start
-      return insertSessionChip(item, { start, end, draftRev: snapshot.draftRev })
+      let span = null
+      if (typeof shell.actions?.captureInsertion === 'function') {
+        try { span = shell.actions.captureInsertion() } catch {}
+      }
+      if (!span || !Number.isFinite(span.start)) {
+        const caret = typeof shell.caretSpan === 'function' ? shell.caretSpan() : null
+        const start = Number.isFinite(caret?.start) ? caret.start : (snapshot.draft || '').length
+        const end = Number.isFinite(caret?.end) ? caret.end : start
+        const draftRev = typeof shell.rev === 'number' ? shell.rev : snapshot.draftRev
+        span = { start, end, draftRev }
+      }
+      return insertSessionChip(item, span)
     }
 
     function hydratePastedMentions() {
@@ -2198,14 +2301,28 @@ window.__ModuleLoader__.load({
       // ↗ 自己有 handler；侧栏 / 搜索 treeitem 普通点击必须交给官方切会话
       if (el.closest('.dsh-nav-new-window, .dsh-nav-tree-item-arrow')) return null
       if (el.closest('[role="treeitem"]')) return null
-      const host = el.closest('.dsh-session-anchor-capsule, .dsh-session-anchor-host, a[href], code')
+      // 输入框内编辑不要作为导航触发
+      if (el.closest('[contenteditable="true"], [data-lexical-editor]')) return null
+
+      const host = el.closest(
+        '.dsh-session-anchor-capsule, .dsh-session-anchor-host, a[href], code, [data-ref-chip="session"], [data-composer-chip="reference"]'
+      )
       if (!host) return null
       if (host.closest('.dsh-navx-root, .dsh-navx-panel, .dsh-navx-results')) return null
+
+      // 支持官方 0.1.7 [data-ref-chip="session"] 元素
+      const chipTitle = host.getAttribute('title') || ''
+      const mentions = parseSessionReferenceMentions(chipTitle)
+      let fromRefChipId = null
+      if (mentions.length > 0) {
+        fromRefChipId = mentions[0].sessionId
+      }
+
       const fromData = normalizeSessionId(host.getAttribute('data-dsh-session') || '')
       const fromHref = parseNavFromUrl(host.getAttribute('href') || host.href || '')
       const trimmed = (host.textContent || '').trim()
       const fromText = host.tagName === 'CODE' && trimmed.length <= 120 ? normalizeSessionId(host.getAttribute('data-dsh-session') || trimmed) : null
-      const sessionId = fromData || fromHref?.sessionId || fromText
+      const sessionId = fromRefChipId || fromData || fromHref?.sessionId || fromText
       if (!sessionId) return null
       const turn =
         fromHref?.turn ||
@@ -2404,6 +2521,71 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /** 识别正文里的 Markdown 规范引用 @[标题](dsh-session:...) 并渲染为官方芯片 */
+    function markMarkdownSessionMentions(root) {
+      const scope = root || document
+      if (!scope || typeof document.createTreeWalker !== 'function') return
+      const walker = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT, {
+        acceptNode(node) {
+          const text = node.nodeValue
+          if (!text || text.indexOf('dsh-session:') === -1) return NodeFilter.FILTER_REJECT
+          const parent = node.parentElement
+          if (!parent || parent.closest(BARE_TEXT_SKIP_SELECTOR)) return NodeFilter.FILTER_REJECT
+          return NodeFilter.FILTER_ACCEPT
+        },
+      })
+      const targets = []
+      let node = walker.nextNode()
+      while (node) {
+        targets.push(node)
+        node = walker.nextNode()
+      }
+      for (const textNode of targets) {
+        const text = textNode.nodeValue || ''
+        const mentions = parseSessionReferenceMentions(text)
+        if (mentions.length === 0) continue
+        const turn = turnForTextNode(textNode)
+        const frag = document.createDocumentFragment()
+        const painted = []
+        let cursor = 0
+        for (const item of mentions) {
+          if (item.index > cursor) {
+            frag.appendChild(document.createTextNode(text.slice(cursor, item.index)))
+          }
+          const id = item.sessionId
+          const title = item.label || sessionTitleOf(id)
+          const anchor = document.createElement('a')
+          paintSessionChip(anchor, { title, sessionId: id, turn })
+          frag.appendChild(anchor)
+          painted.push(anchor)
+          cursor = item.index + item.match.length
+        }
+        if (cursor < text.length) {
+          frag.appendChild(document.createTextNode(text.slice(cursor)))
+        }
+        if (textNode.parentNode) textNode.parentNode.replaceChild(frag, textNode)
+        for (const anchor of painted) hideRedundantLeadIn(anchor)
+      }
+    }
+
+    /** 增强官方原生渲染的 [data-ref-chip="session"]，赋予点击导航能力 */
+    function enhanceOfficialRefChips(root) {
+      const scope = root || document
+      for (const span of scope.querySelectorAll('[data-ref-chip="session"]:not([data-dsh-nav-enhanced])')) {
+        span.setAttribute('data-dsh-nav-enhanced', 'true')
+        const rawTitle = span.getAttribute('title') || ''
+        const mentions = parseSessionReferenceMentions(rawTitle)
+        if (mentions.length > 0) {
+          const sid = mentions[0].sessionId
+          span.setAttribute('data-dsh-session', sid)
+          const turn = extractTurnFromText(span.closest('[data-chat-turn]')?.textContent || '')
+          if (turn) span.setAttribute('data-dsh-turn', String(turn))
+          const title = mentions[0].label || sessionTitleOf(sid)
+          span.setAttribute('title', formatCapsuleTooltip(title, sid, turn))
+        }
+      }
+    }
+
     function setupClickRouter(signal) {
       const opts = { capture: true, signal }
       document.addEventListener(
@@ -2588,7 +2770,9 @@ window.__ModuleLoader__.load({
       removeStrayOverlay()
       rewriteSessionAnchors(document)
       markSessionCode(document)
+      markMarkdownSessionMentions(document)
       markBareSessionText(document)
+      enhanceOfficialRefChips(document)
       injectArrowsToOfficialSearchResults()
       tagSessionRows()
       injectSessionCopyMenuItems()
@@ -2623,16 +2807,50 @@ window.__ModuleLoader__.load({
         console.warn('[dsh-session-navigator] sessions service missing')
         return () => {}
       }
+
+      // 优先通过官方标准扩展点注入侧栏会话菜单，原生样式对齐且无需 DOM 探测
+      let unregisterMenuSlots = null
+      if (ctx.slots && typeof ctx.slots.inject === 'function') {
+        try {
+          ctx.slots.inject('sidebar.workspaces.session.menu.item', () => {
+            const disposers = []
+            try {
+              disposers.push(
+                ctx.slots.register(
+                  { name: 'sidebar.workspaces.session.menu.item', id: 'dsh-session-nav-copy-id', order: 150 },
+                  (props) => renderCopySessionIdItem(props)
+                )
+              )
+              disposers.push(
+                ctx.slots.register(
+                  { name: 'sidebar.workspaces.session.menu.item', id: 'dsh-session-nav-copy-mention', order: 160 },
+                  (props) => renderCopySessionMentionItem(props)
+                )
+              )
+              slotsMenuRegistered = true
+            } catch (err) {
+              console.warn('[dsh-session-navigator] slots register failed:', err)
+            }
+            return () => {
+              disposers.forEach((d) => { try { d?.() } catch {} })
+            }
+          })
+          unregisterMenuSlots = () => { slotsMenuRegistered = false }
+        } catch (e) {
+          console.warn('[dsh-session-navigator] slots inject failed:', e)
+        }
+      }
       // 排障入口：控制台可查深链状态、可手动重放一次直达。
       try {
         window.__dshSessionNavigator = {
-          version: '0.4.6',
+          version: '0.4.7',
           openInNewWindow,
           openSessionInThisWindow,
           get state() {
             const snap = sessionsRef?.list?.getSnapshot?.()
+            const activeId = Object.values(snap?.byId || {}).find((s) => (s?.retainedBy?.mainView ?? 0) > 0)?.id || snap?.current
             return {
-              current: snap?.current,
+              current: activeId,
               phase: snap?.phase,
               listed: snap?.ids?.length ?? 0,
               deepLink: deepLinkJob ? { target: deepLinkJob.target } : null,
@@ -2711,6 +2929,7 @@ window.__ModuleLoader__.load({
        if (enhanceTimer) clearTimeout(enhanceTimer)
        if (toastTimer) clearTimeout(toastTimer)
        if (menuWatchTimer) clearInterval(menuWatchTimer)
+       if (unregisterMenuSlots) unregisterMenuSlots()
        try { hydrateUnsub?.() } catch { /* ignore */ }
        document.getElementById('dsh-session-navigator-styles')?.remove()
        document.getElementById('dsh-nav-id-hits')?.remove()
@@ -2721,7 +2940,7 @@ window.__ModuleLoader__.load({
    }
 
    module.exports.apply = apply
-    module.exports.inject = ['sessions']
+   module.exports.inject = ['sessions', 'slots', 'conversation', 'uiWorkspace']
    return module.exports
   },
 })

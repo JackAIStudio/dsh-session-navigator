@@ -175,6 +175,15 @@ ln -sfn "$HOME/Documents/dshspace/plugins/dsh-session-navigator/skill" "$HOME/.a
 
 MIT License © 2026 [JackAIStudio](https://github.com/JackAIStudio)
 
+## 0.4.7 · 全面贴合 DSH 0.1.7 规范会话引用与原生气泡体验
+
+全面重构对 `@session` 引用的处理，完全对齐 `@deepseek-ai/dsh` 0.1.7 标准规范：
+
+- **会话引用视觉全面对齐 0.1.7 原生规范**：采用官方 `ChatLinesOutlineArtwork` 镂空会话气泡图标（单线描边）与官方 `ReferenceChip` 样式标准，去除旧版多余的灰底胶囊盒模型，改为基线对齐的透明背景与原生 hover 高亮（`--dsw-alias-state-business-tertiary`）；
+- **修复输入框粘贴引用直转气泡（消灭裸 Markdown 闪烁）**：重构 `getComposerShell()`，准确适配 DSH 0.1.7 经 `ui-workspace` 管理活跃会话的架构，彻底解决在新会话及不同视图下无法获取输入框 Shell 导致的粘贴失败；粘贴规范 `@[标题](dsh-session:...)` 引用直接在光标处插入原生 Lexical ReferenceChip 节点，告别原始 Markdown 文本闪现；
+- **侧栏 ⋯ 菜单原生槽位注入**：优先通过 `sidebar.workspaces.session.menu.item` 标准槽位注入「复制会话 ID」与「复制会话引用」，使用官方 `ReferenceIconRegular({ kind: 'session' })` 统一视觉；
+- **聊天记录原生气泡交互强化**：正文中的官方 `[data-ref-chip="session"]` 增加悬停与点击交互，且助手回复中的 `@[标题](dsh-session:...)` 自动渲染为美观的官方标准会话芯片。
+
 ## 0.4.6 · 侧栏补齐 fork 会话的标题（修「标题回退成目录名」）
 
 fork 出来的会话在侧栏显示成项目目录名（`2026-09-21` 这种），点开一次才有标题 —— 这是宿主列表的一个缺陷，不是数据丢了。

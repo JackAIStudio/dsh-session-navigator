@@ -23,11 +23,13 @@ DSH 的 Markdown 渲染器**只把 http(s) / mailto 渲染成 `<a>`**。
 
 ## 3. 必用输出格式
 
-每一条引用都要同时包含：
+在 DSH 0.1.7 中，规范的会话引用格式为官方 Markdown mention：
+```markdown
+@[会话标题](dsh-session:<base64url 编码的 sessionId>)
+```
+前端与宿主 session-reference 会自动将其解析为带有官方气泡图标与标题的会话引用芯片（ReferenceChip），并为模型准备被引用会话的只读背景上下文。
 
-1. 人能读的标题 + 轮次（写在正文里，供插件读取轮次；不要加指南针、钟表等装饰图标）；
-2. 完整 session id（形如 `session-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`）写在行内代码里。
-
+对于需要直达具体轮次的引用，可同时指定标题与轮次：
 ```markdown
 查看会话：<标题> · 第 <N> 轮
 `session-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`
@@ -40,7 +42,7 @@ DSH 的 Markdown 渲染器**只把 http(s) / mailto 渲染成 `<a>`**。
 > - 查看会话：@skill使用范例 你发现了没有？ · 第 1 轮  
 >   `session-75271ba9-0162-4071-950e-28c4f96fc35f`
 
-前端插件会把这段 `session-…` 代码画成和官方 `@` 会话 mention 一样的芯片（气泡图标 + 标题），完整 id 和轮次放在 tooltip。如果上一行只是重复的「查看会话：标题 · 第 N 轮」，插件会藏掉那一行，避免标题写两遍。点击芯片后**新开一个窗口**，打开该会话并滚到第 N 轮。当前聊天窗口不动。侧栏会话列表的普通点击仍在当前窗口切换，不会弹窗。
+前端插件会自动把上述格式画成符合官方 0.1.7 规范的会话芯片（气泡图标 + 标题），完整 id 和轮次放在 tooltip。如果上一行只是重复的「查看会话：标题 · 第 N 轮」，插件会藏掉那一行，避免标题写两遍。点击芯片后**新开一个窗口**，打开该会话并滚到第 N 轮。当前聊天窗口不动。侧栏会话列表的普通点击仍在当前窗口切换，不会弹窗。
 
 macOS 上点击会打开**普通 Google Chrome 标签**，不会跳进「mac工作台」那种 Chrome App。
 
