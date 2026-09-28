@@ -121,7 +121,7 @@ export function syncAttachments(sourceDshHome, targetDshHome, logText) {
         try {
           const st = statSync(srcFile)
           if (st.isDirectory()) {
-            cpSync(srcFile, tgtFile, { recursive: true })
+            cpSync(srcFile, tgtFile, { recursive: true, force: true })
             copied++
           } else if (!existsSync(tgtFile)) {
             copyFileSync(srcFile, tgtFile)
@@ -153,6 +153,25 @@ export function syncProjectionCache(sourceDshHome, targetDshHome, sourceSessionI
   }
   writeFileSync(tgtFile, content)
   return true
+}
+
+/**
+ * Read the latest web launch token from an instance's stdout log file.
+ */
+export function getLaunchToken(dshHome) {
+  const isApp = detectInstanceKind(dshHome) === 'app'
+  const logFile = isApp
+    ? join(dshHome, 'dsh-web.log')
+    : join(dshHome, 'dsh-web-3080.log')
+  if (!existsSync(logFile)) return null
+  try {
+    const content = readFileSync(logFile, 'utf-8')
+    const matches = [...content.matchAll(/dsh web: https?:\/\/[^\s]+\?token=([A-Za-z0-9_-]+)/g)]
+    if (matches.length === 0) return null
+    return matches[matches.length - 1][1]
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -246,7 +265,10 @@ export function transferSession({ sourceDshHome, targetDshHome, sessionId, targe
   // Sync projection cache
   syncProjectionCache(srcHome, tgtHome, normId, finalSessionId)
 
-  const targetUrl = `http://127.0.0.1:${port}/?session=${encodeURIComponent(finalSessionId)}`
+  const targetToken = getLaunchToken(tgtHome)
+  const targetUrl = targetToken
+    ? `http://127.0.0.1:${port}/?token=${encodeURIComponent(targetToken)}#session=${encodeURIComponent(finalSessionId)}`
+    : `http://127.0.0.1:${port}/?session=${encodeURIComponent(finalSessionId)}`
 
   return {
     ok: true,

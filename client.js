@@ -392,9 +392,10 @@ window.__ModuleLoader__.load({
       if (!raw) return null
       try {
         const url = new URL(raw, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3080')
-        const sessionId = normalizeSessionId(url.searchParams.get('session') || url.pathname || '')
+        const hashParams = new URLSearchParams(url.hash.replace(/^#\/?/, ''))
+        const sessionId = normalizeSessionId(url.searchParams.get('session') || hashParams.get('session') || url.pathname || '')
         if (!sessionId) return null
-        const turn = parseTurn(url.searchParams.get('turn'))
+        const turn = parseTurn(url.searchParams.get('turn') || hashParams.get('turn'))
         return { sessionId, turn }
       } catch {
         return null
