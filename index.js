@@ -20,12 +20,17 @@ import {
   defaultPinsPath,
   readPinsDocument,
 } from './pins.js'
+import {
+  getPeerConfig,
+  transferSession,
+} from './transfer.js'
 
 export const name = 'dsh-session-navigator'
 export const inject = ['webServer']
 
 const SEARCH_ROUTE = '/dsh-session-navigator/search'
 const INFO_ROUTE = '/dsh-session-navigator/info'
+export const TRANSFER_ROUTE = '/dsh-session-navigator/transfer'
 const VERSION = '0.4.7'
 const BODY_LIMIT = 2048
 
@@ -264,6 +269,7 @@ export function apply(ctx, config = {}) {
           name: 'dsh-session-navigator',
           version: VERSION,
           dshHome: resolveDshHome(config.dshHome),
+          peer: getPeerConfig(resolveDshHome(config.dshHome)),
           dbAvailable: Boolean(dbPath),
           dbPath,
           summaryCacheAvailable: Boolean(summaryCacheDir),
@@ -272,6 +278,41 @@ export function apply(ctx, config = {}) {
         })
       },
     }), 'dsh-session-navigator/info')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: TRANSFER_ROUTE,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.setHeader('allow', 'POST')
+          sendJson(res, 405, { ok: false, error: 'method not allowed' })
+          return
+        }
+        try {
+          const body = await readJsonBody(req)
+          const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : ''
+          if (!isSessionId(sessionId)) {
+            sendJson(res, 400, { ok: false, error: 'invalid session id' })
+            return
+          }
+          const targetPort = typeof body?.targetPort === 'number' ? body.targetPort : undefined
+          const targetDshHome = typeof body?.targetDshHome === 'string' ? body.targetDshHome : undefined
+          const sourceDshHome = resolveDshHome(config.dshHome)
+          const result = transferSession({
+            sourceDshHome,
+            targetDshHome,
+            sessionId,
+            targetPort,
+          })
+          sendJson(res, 200, result)
+        } catch (error) {
+          sendJson(res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      },
+    }), 'dsh-session-navigator/transfer')
 
     ctx.effect(() => webServer.register({
       kind: 'exact',

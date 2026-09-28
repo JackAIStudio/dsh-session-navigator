@@ -350,6 +350,8 @@ window.__ModuleLoader__.load({
     const PIN_REMOVE_ICON_SVG = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 5l6 6M11 5l-6 6" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
     const PINS_ROUTE = '/dsh-session-navigator/pins'
     const PIN_ROUTE = '/dsh-session-navigator/pin'
+    const TRANSFER_ROUTE = '/dsh-session-navigator/transfer'
+    const TRANSFER_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="width: 14px; height: 14px; flex: none;"><path d="M2.5 8h9M8.5 4.5l3.5 3.5-3.5 3.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.5 3v10" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
     const PIN_GROUP_ID = 'dsh-nav-pin-group'
     let pinsDoc = { version: 1, pins: [] }
     let menuWatchTimer = null
@@ -1152,7 +1154,12 @@ window.__ModuleLoader__.load({
       let unsub = null
       let jumpDone = false
 
-      const isCurrent = () => sessions.list?.getSnapshot?.()?.current === target
+      const isCurrent = () => {
+        const snap = sessions.list?.getSnapshot?.()
+        if (snap?.current === target) return true
+        const mainId = Object.values(snap?.byId || {}).find((r) => (r?.retainedBy?.mainView ?? 0) > 0)?.id
+        return mainId === target
+      }
 
       const tryJump = () => {
         if (!turn || jumpDone) return
@@ -1209,9 +1216,13 @@ window.__ModuleLoader__.load({
         }
         if (action !== 'open') return action === 'done' || action === 'yield'
         try {
-          sessions.open(target)
+          if (typeof uiWorkspaceRef?.openSession === 'function') {
+            uiWorkspaceRef.openSession(target)
+          } else if (typeof sessions.open === 'function') {
+            sessions.open(target)
+          }
         } catch (error) {
-          console.warn('[dsh-session-navigator] sessions.open warning:', error)
+          console.warn('[dsh-session-navigator] openSession warning:', error)
           return false
         }
         return isCurrent()
@@ -1916,6 +1927,111 @@ window.__ModuleLoader__.load({
       ])
     }
 
+    function sessionTransferMenuLabels(locale) {
+      const isApp = window.location.port === '3180'
+      const en = String(locale || '').toLowerCase().startsWith('en')
+      if (en) {
+        return {
+          label: isApp ? 'Transfer to 3080 Web 🚀' : 'Transfer to 3180 App 💻',
+          transferring: isApp ? 'Transferring to 3080 Web...' : 'Transferring to 3180 App...',
+          success: isApp ? 'Transferred to 3080! Opening...' : 'Transferred to 3180! Opening...',
+          failed: 'Transfer failed',
+        }
+      }
+      return {
+        label: isApp ? '传送至 3080 Web 端 🚀' : '传送至 3180 桌面端 💻',
+        transferring: isApp ? '正在传送至 3080 Web 端...' : '正在传送至 3180 桌面端...',
+        success: isApp ? '已传送至 3080！正在打开...' : '已传送至 3180！正在打开...',
+        failed: '传送失败',
+      }
+    }
+
+    async function transferSessionToPeer(sessionId) {
+      const sid = normalizeSessionId(sessionId)
+      if (!sid) return
+      const isApp = window.location.port === '3180'
+      const targetPort = isApp ? 3080 : 3180
+      const labels = sessionTransferMenuLabels(mentionLocale())
+
+      showCopyToast(labels.transferring)
+      try {
+        const res = await fetch(TRANSFER_ROUTE, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId: sid, targetPort }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.ok) {
+          showCopyToast(`${labels.failed}: ${data.error || res.statusText}`)
+          return
+        }
+        showCopyToast(labels.success)
+        closeOpenMenus()
+        if (data.targetUrl) {
+          if (isApp) {
+            void openChromeTab(data.targetUrl).catch(() => {
+              window.open(data.targetUrl, '_blank')
+            })
+          } else {
+            window.open(data.targetUrl, '_blank')
+          }
+        }
+      } catch (err) {
+        showCopyToast(`${labels.failed}: ${err.message}`)
+      }
+    }
+
+    function renderTransferIconNode() {
+      if (!h) return null
+      return h('svg', {
+        width: 14,
+        height: 14,
+        viewBox: '0 0 16 16',
+        fill: 'none',
+        'aria-hidden': 'true',
+        style: { width: '14px', height: '14px', flex: 'none' },
+      }, [
+        h('path', { d: 'M2.5 8h9M8.5 4.5l3.5 3.5-3.5 3.5', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('path', { d: 'M13.5 3v10', stroke: 'currentColor', strokeWidth: 1.25, strokeLinecap: 'round' }),
+      ])
+    }
+
+    function renderTransferSessionItem(props) {
+      if (!h) return null
+      const sid = props?.sessionId
+      const useMenuOpenState = props?.useMenuOpenState
+      const [, setMenuOpen] = typeof useMenuOpenState === 'function' ? useMenuOpenState() : [null, () => {}]
+      const labels = sessionTransferMenuLabels(mentionLocale())
+      const icon = renderTransferIconNode()
+
+      if (primitives?.MenuItemButton) {
+        return h(primitives.MenuItemButton, {
+          icon,
+          onSelect: () => {
+            setMenuOpen(false)
+            void transferSessionToPeer(sid)
+          },
+          children: labels.label,
+        })
+      }
+
+      return h('div', { className: '_itemWrap_gzo7u_90', 'data-dsh-copy-menu': 'transfer' }, [
+        h('button', {
+          type: 'button',
+          role: 'menuitem',
+          className: '_item_gzo7u_90',
+          onClick: (e) => {
+            e.stopPropagation()
+            setMenuOpen(false)
+            void transferSessionToPeer(sid)
+          },
+        }, [
+          h('span', { className: '_itemIcon_gzo7u_148' }, [icon]),
+          h('span', { className: '_itemLabel_gzo7u_190' }, labels.label),
+        ]),
+      ])
+    }
+
     function prepareClonedCopyItem(wrap, { key, sessionId, label, iconSvg, onCopy }) {
       wrap.dataset.dshCopyMenu = key
       wrap.dataset.dshSession = sessionId
@@ -1964,9 +2080,11 @@ window.__ModuleLoader__.load({
       if (!sessionId) return
       const existingId = menu.querySelector('[data-dsh-copy-menu="id"]')
       const existingMention = menu.querySelector('[data-dsh-copy-menu="mention"]')
-      if (existingId && existingMention
+      const existingTransfer = menu.querySelector('[data-dsh-copy-menu="transfer"]')
+      if (existingId && existingMention && existingTransfer
         && existingId.getAttribute('data-dsh-session') === sessionId
-        && existingMention.getAttribute('data-dsh-session') === sessionId) {
+        && existingMention.getAttribute('data-dsh-session') === sessionId
+        && existingTransfer.getAttribute('data-dsh-session') === sessionId) {
         return
       }
       menu.querySelectorAll('[data-dsh-copy-menu]').forEach((el) => el.remove())
@@ -1976,6 +2094,7 @@ window.__ModuleLoader__.load({
       const slot = sessionMenuItemHost(sample)
       if (!slot) return
       const copyLabels = sessionCopyMenuLabels(mentionLocale())
+      const transferLabels = sessionTransferMenuLabels(mentionLocale())
       const idWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
         key: 'id',
         sessionId,
@@ -1990,9 +2109,17 @@ window.__ModuleLoader__.load({
         iconSvg: COPY_MENTION_ICON_SVG,
         onCopy: () => { copySessionMention(sessionId) },
       })
+      const transferWrap = prepareClonedCopyItem(slot.before.cloneNode(true), {
+        key: 'transfer',
+        sessionId,
+        label: transferLabels.label,
+        iconSvg: TRANSFER_ICON_SVG,
+        onCopy: () => { void transferSessionToPeer(sessionId) },
+      })
       try {
         slot.host.insertBefore(idWrap, slot.before)
         slot.host.insertBefore(mentionWrap, slot.before)
+        slot.host.insertBefore(transferWrap, slot.before)
       } catch (error) {
         console.warn('[dsh-session-navigator] session menu inject failed:', error)
       }
@@ -2825,6 +2952,12 @@ window.__ModuleLoader__.load({
                 ctx.slots.register(
                   { name: 'sidebar.workspaces.session.menu.item', id: 'dsh-session-nav-copy-mention', order: 160 },
                   (props) => renderCopySessionMentionItem(props)
+                )
+              )
+              disposers.push(
+                ctx.slots.register(
+                  { name: 'sidebar.workspaces.session.menu.item', id: 'dsh-session-nav-transfer', order: 170 },
+                  (props) => renderTransferSessionItem(props)
                 )
               )
               slotsMenuRegistered = true
