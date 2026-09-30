@@ -2438,6 +2438,16 @@ window.__ModuleLoader__.load({
       if (!host) return null
       if (host.closest('.dsh-navx-root, .dsh-navx-panel, .dsh-navx-results')) return null
 
+      if (host.tagName === 'A') {
+        const rawHref = host.getAttribute('href') || host.href || ''
+        try {
+          const u = new URL(rawHref, window.location.href)
+          if (u.origin !== window.location.origin) {
+            return null
+          }
+        } catch {}
+      }
+
       // 支持官方 0.1.7 [data-ref-chip="session"] 元素
       const chipTitle = host.getAttribute('title') || ''
       const mentions = parseSessionReferenceMentions(chipTitle)
@@ -2464,7 +2474,14 @@ window.__ModuleLoader__.load({
       const scope = root || document
       for (const a of scope.querySelectorAll('a[href]')) {
         if (a.classList.contains('dsh-nav-new-window') || a.classList.contains('dsh-nav-tree-item-arrow')) continue
-        const nav = parseNavFromUrl(a.getAttribute('href') || '') || parseNavFromUrl(a.href)
+        const rawHref = a.getAttribute('href') || a.href || ''
+        try {
+          const u = new URL(rawHref, window.location.href)
+          if (u.origin !== window.location.origin) {
+            continue
+          }
+        } catch {}
+        const nav = parseNavFromUrl(rawHref)
         if (!nav) continue
         const next = `/?session=${encodeURIComponent(nav.sessionId)}${nav.turn ? `&turn=${nav.turn}` : ''}`
         if (a.getAttribute('href') !== next) a.setAttribute('href', next)
