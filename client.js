@@ -498,7 +498,7 @@ window.__ModuleLoader__.load({
       return svg
     }
 
-    function paintSessionChip(anchor, { title, sessionId, turn }) {
+    function paintSessionChip(anchor, { title, sessionId, turn, origin }) {
       const id = normalizeSessionId(sessionId)
       if (!id || !(anchor instanceof Element)) return
       const label = formatCapsuleLabel(title, id, turn)
@@ -509,7 +509,7 @@ window.__ModuleLoader__.load({
       if (turn) anchor.dataset.dshTurn = String(turn)
       else delete anchor.dataset.dshTurn
       anchor.setAttribute('title', tooltip)
-      makeNativeAnchor(anchor, id, turn)
+      makeNativeAnchor(anchor, id, turn, origin)
       const labelNode = anchor.querySelector('.dsh-session-anchor-label')
       const iconNode = anchor.querySelector('.dsh-session-anchor-icon')
       if (anchor.dataset.dshNavLabel === label && labelNode && iconNode) {
@@ -799,20 +799,35 @@ window.__ModuleLoader__.load({
         url.searchParams.delete(NEW_TAB_PROBE_KEY)
         window.history.replaceState(window.history.state, '', url.toString())
         if (window.opener) window.opener.postMessage({ [NEW_TAB_PROBE_KEY]: token }, '*')
-      } catch {
-        /* ignore */
-      }
+    } catch {
+      /* ignore */
     }
+  }
 
-    /**
-     * 默认动作：在**新标签**打开目标会话（同源，不开到别的地址）。
-     * 全程静默，只有新标签确实起不来时才退回当前窗口并给一次说明。
-     */
-    function openInNewWindow(sessionId, turn) {
-      const origins = candidateOrigins()
-      const token = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
-      let settled = false
-      let finished = false
+  function isPwaOrStandalone() {
+    try {
+      if (typeof window === 'undefined') return false
+      if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true
+      if (window.navigator && window.navigator.standalone === true) return true
+      if (window.outerHeight > 0 && window.innerHeight > 0 && Math.abs(window.outerHeight - window.innerHeight) < 60 && window.locationbar && !window.locationbar.visible) {
+        return true
+      }
+    } catch {}
+    return false
+  }
+
+  /**
+   * 默认动作：在**新标签**打开目标会话。
+   * 全程静默，只有新标签确实起不来时才退回当前窗口并给一次说明。
+   */
+  function openInNewWindow(sessionId, turn, targetOrigin) {
+    const baseOrigins = candidateOrigins()
+    const origins = targetOrigin
+      ? [targetOrigin, ...baseOrigins.filter((o) => o !== targetOrigin)]
+      : baseOrigins
+    const token = `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+    let settled = false
+    let finished = false
 
       const onMessage = (event) => {
         const data = event.data
@@ -829,14 +844,31 @@ window.__ModuleLoader__.load({
       window.addEventListener('message', onMessage)
 
       const fallbackToThisWindow = (message) => {
-        done()
-        openSessionInThisWindow(sessionId, turn)
-        showCopyToast(message)
-      }
+      done()
+      openSessionInThisWindow(sessionId, turn)
+      showCopyToast(message)
+    }
 
-      const attempt = (index) => {
-        if (settled || finished) return
-        if (index >= origins.length) {
+    // 在 PWA / Standalone 独立窗口模式下，点击链接直接在 Chrome 浏览器标准 Web 标签页中打开
+    if (isPwaOrStandalone()) {
+      const origin = origins[0] || window.location.origin
+      const targetUrl = navUrlAt(origin, sessionId, turn)
+      openChromeTab(targetUrl, 3000).then((ok) => {
+        if (ok) {
+          settled = true
+          done()
+        } else {
+          attempt(0)
+        }
+      }).catch(() => {
+        attempt(0)
+      })
+      return
+    }
+
+    const attempt = (index) => {
+      if (settled || finished) return
+      if (index >= origins.length) {
           fallbackToThisWindow('新标签没能打开，已在当前窗口打开这个会话')
           return
         }
@@ -2443,6 +2475,12 @@ window.__ModuleLoader__.load({
         try {
           const u = new URL(rawHref, window.location.href)
           if (u.origin !== window.location.origin) {
+            if (isPwaOrStandalone()) {
+              const navCross = parseNavFromUrl(rawHref)
+              if (navCross && navCross.sessionId) {
+                return { sessionId: navCross.sessionId, turn: navCross.turn, origin: u.origin }
+              }
+            }
             return null
           }
         } catch {}
@@ -2467,7 +2505,7 @@ window.__ModuleLoader__.load({
         findTurnForCode(host) ||
         extractTurnFromText(host.closest('[data-chat-turn], p, li, div')?.textContent || '') ||
         parseTurn(host.getAttribute('data-dsh-turn'))
-      return { sessionId, turn }
+      return { sessionId, turn, origin: fromHref?.origin }
     }
 
     function rewriteSessionAnchors(root) {
@@ -2475,9 +2513,18 @@ window.__ModuleLoader__.load({
       for (const a of scope.querySelectorAll('a[href]')) {
         if (a.classList.contains('dsh-nav-new-window') || a.classList.contains('dsh-nav-tree-item-arrow')) continue
         const rawHref = a.getAttribute('href') || a.href || ''
+        const explicitOrigin = detectExplicitOrigin(rawHref, a)
         try {
           const u = new URL(rawHref, window.location.href)
           if (u.origin !== window.location.origin) {
+            if (explicitOrigin) {
+              const navCross = parseNavFromUrl(rawHref)
+              if (navCross && navCross.sessionId) {
+                const title = sessionTitleOf(navCross.sessionId)
+                paintSessionChip(a, { title, sessionId: navCross.sessionId, turn: navCross.turn, origin: explicitOrigin })
+                hideRedundantLeadIn(a.closest('.dsh-session-anchor-host') || a)
+              }
+            }
             continue
           }
         } catch {}
@@ -2486,28 +2533,60 @@ window.__ModuleLoader__.load({
         const next = `/?session=${encodeURIComponent(nav.sessionId)}${nav.turn ? `&turn=${nav.turn}` : ''}`
         if (a.getAttribute('href') !== next) a.setAttribute('href', next)
         const title = sessionTitleOf(nav.sessionId)
-        paintSessionChip(a, { title, sessionId: nav.sessionId, turn: nav.turn })
+        paintSessionChip(a, { title, sessionId: nav.sessionId, turn: nav.turn, origin: explicitOrigin })
         hideRedundantLeadIn(a.closest('.dsh-session-anchor-host') || a)
       }
     }
 
+    function detectExplicitOrigin(rawText, el) {
+      if (el && el.closest) {
+        const a = el.closest('a[href]')
+        if (a) {
+          const h = a.getAttribute('href') || a.href || ''
+          if (h.startsWith('http:') || h.startsWith('https:')) {
+            try { return new URL(h).origin } catch {}
+          }
+        }
+      }
+      const str = String(rawText || '')
+      const match = str.match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?/i)
+      if (match) {
+        try { return new URL(match[0]).origin } catch {}
+      }
+      return null
+    }
+
     // 让胶囊走浏览器原生 target=_blank：原生点击永不被弹窗拦截，
     // 也不会像 window.open 那样在 Chrome 应用模式里拿到 about:blank。
-    function makeNativeAnchor(anchor, sessionId, turn) {
+    function makeNativeAnchor(anchor, sessionId, turn, explicitOrigin) {
       const id = normalizeSessionId(sessionId)
       if (!id) return
-      // 绝对地址，但**只指向当前 origin**：一旦写成另一个 loopback 地址
-      // （localhost ⇄ 127.0.0.1），新标签就没有那边的登录 cookie，会落到
-      // 「dsh web authentication required」的 401 页面上。
-      anchor.setAttribute('href', navUrl(id, turn))
+      let origin = explicitOrigin || anchor.getAttribute('data-dsh-nav-origin')
+      if (!origin) {
+        try {
+          const raw = anchor.getAttribute('href') || anchor.href || ''
+          if (raw.startsWith('http:') || raw.startsWith('https:')) {
+            origin = new URL(raw).origin
+          }
+        } catch {}
+      }
+      origin = origin || window.location.origin
+      anchor.setAttribute('href', navUrlAt(origin, id, turn))
       anchor.setAttribute('target', '_blank')
       anchor.setAttribute('rel', 'noopener')
       anchor.setAttribute('data-dsh-nav-native', 'true')
+      if (origin !== window.location.origin) {
+        anchor.setAttribute('data-dsh-nav-origin', origin)
+      }
     }
 
     /** 点击瞬间按当前额度重算胶囊地址：数标签数比渲染时刻准。 */
     function refreshNativeAnchorTarget(anchor) {
       try {
+        const explicitOrigin = anchor.getAttribute('data-dsh-nav-origin')
+        if (explicitOrigin && explicitOrigin !== window.location.origin) {
+          return
+        }
         const nav = parseNavFromUrl(anchor.getAttribute('href')) || parseNavFromUrl(anchor.getAttribute('data-dsh-session') || '')
         if (!nav) return
         const next = navUrlAt(candidateOrigins()[0], nav.sessionId, nav.turn)
@@ -2550,7 +2629,8 @@ window.__ModuleLoader__.load({
           el.appendChild(inner)
           el.dataset.dshNavLabel = ''
         }
-        paintSessionChip(inner, { title, sessionId: id, turn })
+        const origin = detectExplicitOrigin(raw, el)
+        paintSessionChip(inner, { title, sessionId: id, turn, origin })
         el.dataset.dshNavLabel = label
         el.removeAttribute('title')
         hideRedundantLeadIn(el)
@@ -2650,7 +2730,8 @@ window.__ModuleLoader__.load({
           if (id) {
             const title = sessionTitleOf(id)
             const anchor = document.createElement('a')
-            paintSessionChip(anchor, { title, sessionId: id, turn })
+            const origin = detectExplicitOrigin(textNode.nodeValue, textNode.parentElement)
+            paintSessionChip(anchor, { title, sessionId: id, turn, origin })
             frag.appendChild(anchor)
             painted.push(anchor)
           } else {
@@ -2791,23 +2872,23 @@ window.__ModuleLoader__.load({
             //    聊天胶囊：用户按 ⌘ 同样在新窗口打开，保持多开行为直觉一致。
             if (event.metaKey || event.ctrlKey) {
               const sid = (nav && nav.sessionId) || getSessionIdFromElement(event.target)
-              if (sid) {
-                event.preventDefault()
-                event.stopImmediatePropagation()
-                openInNewWindow(sid, nav?.turn)
-                return
-              }
+            if (sid) {
+              event.preventDefault()
+              event.stopImmediatePropagation()
+              openInNewWindow(sid, nav?.turn, nav?.origin)
+              return
             }
+          }
 
-            // 2. 聊天正文中的会话胶囊 / code / 导航链接：默认**开新标签**。
-            //    侧栏 treeitem、搜索 treeitem、↗ 都被 navFromElement 排除在外。
-            //    新标签起不来时会自动换 origin，最后才退回当前窗口（见 openInNewWindow）。
-            if (!nav) return
-            if (event.target.closest('.dsh-navx-root, .dsh-navx-panel')) return
-            event.preventDefault()
-            event.stopImmediatePropagation()
-            openInNewWindow(nav.sessionId, nav.turn)
-          } catch (error) {
+          // 2. 聊天正文中的会话胶囊 / code / 导航链接：默认**开新标签**。
+          //    侧栏 treeitem、搜索 treeitem、↗ 都被 navFromElement 排除在外。
+          //    新标签起不来时会自动换 origin，最后才退回当前窗口（见 openInNewWindow）。
+          if (!nav) return
+          if (event.target.closest('.dsh-navx-root, .dsh-navx-panel')) return
+          event.preventDefault()
+          event.stopImmediatePropagation()
+          openInNewWindow(nav.sessionId, nav.turn, nav.origin)
+        } catch (error) {
             console.error('[dsh-session-navigator] click handler error:', error)
           }
         },
