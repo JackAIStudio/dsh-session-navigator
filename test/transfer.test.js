@@ -28,7 +28,7 @@ test('detectInstanceKind and getPeerConfig', () => {
   assert.equal(cliPeer.targetLabel, '3180 桌面端')
 })
 
-test('transferSession full lifecycle with attachments, directory files, and cross-workspace rename', () => {
+test('transferSession full lifecycle with attachments, directory files, and cross-workspace rename', async () => {
   const root = mkdtempSync(join(tmpdir(), 'dsh-transfer-test-'))
   const srcHome = join(root, 'source-dsh')
   const tgtHome = join(root, 'target-dsh')
@@ -81,25 +81,37 @@ test('transferSession full lifecycle with attachments, directory files, and cros
     writeFileSync(join(srcSessionDir, 'session.lock'), '')
 
     // 1. First transfer (no conflict)
-    const res1 = transferSession({
+    // A port with no listener keeps the cross-instance notify out of the test:
+    // no target is watching, so the caller still delivers in a browser tab.
+    const idlePort = 59999
+    const res1 = await transferSession({
       sourceDshHome: srcHome,
       targetDshHome: tgtHome,
       sessionId,
-      targetPort: 3080,
+      targetPort: idlePort,
     })
 
     assert.equal(res1.ok, true)
     assert.equal(res1.sourceSessionId, sessionId)
     assert.equal(res1.targetSessionId, sessionId)
     assert.equal(res1.renamed, false)
-    assert.equal(res1.targetPort, 3080)
-    assert.equal(res1.targetUrl, `http://127.0.0.1:3080/?session=${sessionId}`)
+    assert.equal(res1.targetPort, idlePort)
+    assert.equal(res1.targetUrl, `http://127.0.0.1:${idlePort}/?session=${sessionId}`)
     assert.equal(res1.attachmentsCopied, 2)
+    assert.equal(res1.notified, false)
+    assert.equal(res1.watching, false)
+    assert.equal(res1.deliverInBrowser, true)
 
     // Verify target file exists
     const tgtSessionDir = join(tgtHome, 'sessions', wsName, sessionId)
     assert.equal(existsSync(join(tgtSessionDir, 'session.v4.jsonl.zstd')), true)
     assert.equal(existsSync(join(tgtSessionDir, 'session.lock')), true)
+
+    // Verify target session header has fresh createdAt for top-ordering
+    const tgtDecompressed = execFileSync('zstd', ['-dc', join(tgtSessionDir, 'session.v4.jsonl.zstd')]).toString('utf-8')
+    const tgtHeader = JSON.parse(tgtDecompressed.split('\n')[0])
+    assert.equal(tgtHeader.id, sessionId)
+    assert.ok(tgtHeader.createdAt > 1790000000000, 'target session header createdAt must be refreshed to Date.now()')
 
     // Verify target attachment (file) exists
     const tgtAttachFile = join(tgtHome, 'attachments', 'v1', 'request-images', sub, fakeHash)
@@ -112,16 +124,19 @@ test('transferSession full lifecycle with attachments, directory files, and cros
     assert.equal(readFileSync(join(tgtFilesDir, 'sample.zip'), 'utf-8'), 'zip-binary-data')
 
     // 2. Second transfer of the same session in the same workspace (updates in place without renaming)
-    const res2 = transferSession({
+    const res2 = await transferSession({
       sourceDshHome: srcHome,
       targetDshHome: tgtHome,
       sessionId,
-      targetPort: 3080,
+      targetPort: idlePort,
     })
 
     assert.equal(res2.ok, true)
     assert.equal(res2.renamed, false)
     assert.equal(res2.targetSessionId, sessionId)
+    assert.equal(res2.isDesktopTarget, false)
+    assert.equal(res2.deliverInBrowser, true)
+    assert.equal(res2.watching, false)
 
   } finally {
     rmSync(root, { recursive: true, force: true })

@@ -31,7 +31,9 @@ export const inject = ['webServer']
 const SEARCH_ROUTE = '/dsh-session-navigator/search'
 const INFO_ROUTE = '/dsh-session-navigator/info'
 export const TRANSFER_ROUTE = '/dsh-session-navigator/transfer'
-const VERSION = '0.4.7'
+export const NOTIFY_INCOMING_ROUTE = '/dsh-session-navigator/notify-incoming'
+export const INCOMING_SESSIONS_ROUTE = '/dsh-session-navigator/incoming-events'
+const VERSION = '0.5.0'
 const BODY_LIMIT = 2048
 
 function sendJson(res, statusCode, value) {
@@ -41,6 +43,39 @@ function sendJson(res, statusCode, value) {
   res.setHeader('cache-control', 'no-store')
   res.setHeader('content-length', String(Buffer.byteLength(body)))
   res.end(body)
+}
+
+/**
+ * Register an incoming session under the workspace that owns its directory.
+ *
+ * A transferred log appears on disk without the host ever attaching it, so the
+ * workspace registry keeps no sessionIds slot for it and every grouping surface
+ * (the sidebar's recency order included) files it under 未分组 at the end.
+ * Attaching is the same call the host makes for a session it creates itself.
+ *
+ * @param {object} ctx - plugin context, used to reach the workspace registry.
+ * @param {string} sessionId - transferred session id.
+ * @param {string} cwd - the session's own working directory.
+ * @returns {Promise<boolean>} whether an attachment was performed.
+ */
+async function attachIncomingSession(ctx, sessionId, cwd) {
+  if (typeof sessionId !== 'string' || typeof cwd !== 'string' || cwd === '') return false
+  const registry = typeof ctx?.get === 'function'
+    ? ctx.get('workspaceRegistry') ?? ctx.get('workspaces')
+    : undefined
+  if (!registry) return false
+  try {
+    const known = typeof registry.list === 'function'
+      ? registry.list().find((workspace) => workspace?.path === cwd)
+      : undefined
+    const workspace = known ?? (typeof registry.create === 'function' ? await registry.create(cwd) : undefined)
+    if (!workspace || typeof workspace.attachSession !== 'function') return false
+    await workspace.attachSession(sessionId)
+    return true
+  } catch (error) {
+    console.warn('[dsh-session-navigator] attachIncomingSession warning:', error)
+    return false
+  }
 }
 
 /**
@@ -217,6 +252,9 @@ export function apply(ctx, config = {}) {
     pinWrite = run.then(() => {}, () => {})
     return run
   }
+  const incomingSessions = []
+  // 最近一次目标端轮询 /incoming-events 的时间：用来判断“有没有窗口正在监听”。
+  let lastIncomingPollAt = 0
 
   ctx.inject(['webServer'], (web) => {
     const webServer = web.get('webServer')
@@ -298,7 +336,7 @@ export function apply(ctx, config = {}) {
           const targetPort = typeof body?.targetPort === 'number' ? body.targetPort : undefined
           const targetDshHome = typeof body?.targetDshHome === 'string' ? body.targetDshHome : undefined
           const sourceDshHome = resolveDshHome(config.dshHome)
-          const result = transferSession({
+          const result = await transferSession({
             sourceDshHome,
             targetDshHome,
             sessionId,
@@ -313,6 +351,58 @@ export function apply(ctx, config = {}) {
         }
       },
     }), 'dsh-session-navigator/transfer')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: NOTIFY_INCOMING_ROUTE,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') {
+          res.setHeader('allow', 'POST')
+          sendJson(res, 405, { ok: false, error: 'method not allowed' })
+          return
+        }
+        try {
+          const body = await readJsonBody(req)
+          const sessionId = typeof body?.sessionId === 'string' ? body.sessionId.trim() : ''
+          if (!isSessionId(sessionId)) {
+            sendJson(res, 400, { ok: false, error: 'invalid session id' })
+            return
+          }
+          // activate: the target should also switch its window to the session.
+          // Web targets only refresh their list, because the caller opens the
+          // session in its own tab and a second switch would be redundant.
+          const cwd = typeof body?.cwd === 'string' ? body.cwd.trim() : ''
+          const attached = await attachIncomingSession(ctx, sessionId, cwd)
+          // 有窗口在监听就让它自己切过去（activate）；没有则只登记，由调用方开标签页兜底。
+          const watching = Date.now() - lastIncomingPollAt < 15000
+          incomingSessions.push({ sessionId, time: Date.now(), activate: watching })
+          if (incomingSessions.length > 50) incomingSessions.shift()
+          sendJson(res, 200, { ok: true, received: sessionId, attached, watching })
+        } catch (error) {
+          sendJson(res, 500, {
+            ok: false,
+            error: error instanceof Error ? error.message : String(error),
+          })
+        }
+      },
+    }), 'dsh-session-navigator/notify-incoming')
+
+    ctx.effect(() => webServer.register({
+      kind: 'exact',
+      path: INCOMING_SESSIONS_ROUTE,
+      handler: (req, res) => {
+        if (req.method !== 'GET') {
+          res.setHeader('allow', 'GET')
+          sendJson(res, 405, { ok: false, error: 'method not allowed' })
+          return
+        }
+        const url = new URL(req.url, 'http://127.0.0.1')
+        const since = parseInt(url.searchParams.get('since') || '0', 10)
+        lastIncomingPollAt = Date.now()
+        const items = incomingSessions.filter((s) => s.time > since)
+        sendJson(res, 200, { ok: true, items })
+      },
+    }), 'dsh-session-navigator/incoming-events')
 
     ctx.effect(() => webServer.register({
       kind: 'exact',

@@ -351,6 +351,7 @@ window.__ModuleLoader__.load({
     const PINS_ROUTE = '/dsh-session-navigator/pins'
     const PIN_ROUTE = '/dsh-session-navigator/pin'
     const TRANSFER_ROUTE = '/dsh-session-navigator/transfer'
+    const INCOMING_EVENTS_ROUTE = '/dsh-session-navigator/incoming-events'
     const TRANSFER_ICON_SVG = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true" style="width: 14px; height: 14px; flex: none;"><path d="M2.5 8h9M8.5 4.5l3.5 3.5-3.5 3.5" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.5 3v10" stroke="currentColor" stroke-width="1.25" stroke-linecap="round"/></svg>'
     const PIN_GROUP_ID = 'dsh-nav-pin-group'
     let pinsDoc = { version: 1, pins: [] }
@@ -2002,10 +2003,15 @@ window.__ModuleLoader__.load({
         closeOpenMenus()
         if (data.targetUrl) {
           if (isApp) {
-            void openChromeTab(data.targetUrl).catch(() => {
-              window.open(data.targetUrl, '_blank')
-            })
-          } else {
+            // 目标网页端已有窗口在监听：它自己会切过去，再开标签页只会多一份；
+            // 没有窗口监听时才开标签页兜底（带上 token，避免 401 空白页）。
+            if (data.deliverInBrowser !== false) {
+              void openChromeTab(data.targetUrl).catch(() => {
+                window.open(data.targetUrl, '_blank')
+              })
+            }
+          } else if (data.deliverInBrowser === true) {
+            // 反向传送：目标是桌面端（它自己切窗口）或网页端已有人监听，都不再开新标签页。
             window.open(data.targetUrl, '_blank')
           }
         }
@@ -3075,7 +3081,7 @@ window.__ModuleLoader__.load({
       // 排障入口：控制台可查深链状态、可手动重放一次直达。
       try {
         window.__dshSessionNavigator = {
-          version: '0.4.7',
+          version: '0.5.0',
           openInNewWindow,
           openSessionInThisWindow,
           get state() {
@@ -3087,6 +3093,25 @@ window.__ModuleLoader__.load({
               listed: snap?.ids?.length ?? 0,
               deepLink: deepLinkJob ? { target: deepLinkJob.target } : null,
               bootNav,
+            }
+          },
+          /** 排障：宿主给出的列表顺序与每行的 updatedAt（前 N 行）。 */
+          get order() {
+            const snap = sessionsRef?.list?.getSnapshot?.()
+            if (!snap) return null
+            const ids = Array.isArray(snap.ids) ? snap.ids : Object.keys(snap.byId || {})
+            return {
+              total: ids.length,
+              head: ids.slice(0, 6).map((id) => ({
+                id,
+                updatedAt: snap.byId?.[id]?.updatedAt,
+                title: snap.byId?.[id]?.title,
+              })),
+              tail: ids.slice(-3).map((id) => ({
+                id,
+                updatedAt: snap.byId?.[id]?.updatedAt,
+                title: snap.byId?.[id]?.title,
+              })),
             }
           },
         }
@@ -3103,8 +3128,8 @@ window.__ModuleLoader__.load({
           // （例外：补齐缺失标题，见 fillMissingSessionTitles——它按会话 id 去重，
           //   每个会话一生只发一次本机环回请求，补上标题后该行会自行退出扫描）
           renderPinnedGroup()
-          markOfficialPinnedRows()
-          fillMissingSessionTitles()
+           markOfficialPinnedRows()
+           fillMissingSessionTitles()
         })
       }
 
@@ -3151,9 +3176,47 @@ window.__ModuleLoader__.load({
         }, 80)
       })
       observer.observe(document.body, { childList: true, subtree: true })
+      // 监听跨端口/跨端传送过来的会话，实现目标端无感自动更新与自动切换
+      let lastIncomingPollTime = Date.now()
+      let incomingPollTimer = null
+
+      function pollIncomingTransfers() {
+        fetch(`${INCOMING_EVENTS_ROUTE}?since=${lastIncomingPollTime}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then(async (data) => {
+            if (!data?.ok || !Array.isArray(data.items) || data.items.length === 0) return
+            for (const item of data.items) {
+              if (item.time > lastIncomingPollTime) {
+                lastIncomingPollTime = item.time
+              }
+              const sid = normalizeSessionId(item.sessionId)
+              if (!sid) continue
+              // 拉一次官方 session.list 基线（一次 RPC）：新会话按宿主排序落到列表最前，
+              // 而不是本地注入一条 summary——注入只会把行放到列表末尾，还拿不到标题。
+              if (typeof sessionsRef?.refresh === 'function') {
+                try {
+                  await sessionsRef.refresh()
+                } catch {}
+              }
+              // activate=true 才切窗口：桌面端没有外部深链入口，必须自己跳；
+              // 网页端由调用方新开标签页展示，这里只把列表刷到最前，避免重复跳转。
+              if (item.activate === true) openSessionInThisWindow(sid)
+              const isEn = String(mentionLocale() || '').toLowerCase().startsWith('en')
+              showCopyToast(isEn
+                ? (item.activate === true ? 'Received session from peer 🚀' : 'Session received; list refreshed 🚀')
+                : (item.activate === true ? '已从对端接收会话并为您打开 🚀' : '已接收对端会话，列表已刷新到最前 🚀'))
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            incomingPollTimer = setTimeout(pollIncomingTransfers, 2000)
+          })
+      }
+      incomingPollTimer = setTimeout(pollIncomingTransfers, 1000)
      return () => {
        clickRouter.abort()
        clearInterval(originWatchTimer)
+       if (incomingPollTimer) clearTimeout(incomingPollTimer)
        clearTimeout(searchHandoffHintTimer)
        observer?.disconnect()
        deepLinkJob?.finish()

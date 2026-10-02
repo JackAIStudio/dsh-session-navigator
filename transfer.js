@@ -1,4 +1,4 @@
-import { homedir } from 'node:os'
+import { homedir, platform } from 'node:os'
 import { join, resolve } from 'node:path'
 import {
   existsSync,
@@ -9,8 +9,11 @@ import {
   readFileSync,
   statSync,
   cpSync,
+  openSync,
+  readSync,
+  closeSync,
 } from 'node:fs'
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { normalizeSessionId } from './protocol.js'
 import { resolveDshHome } from './home-paths.js'
@@ -138,8 +141,9 @@ export function syncAttachments(sourceDshHome, targetDshHome, logText) {
 
 /**
  * Sync projection cache JSON so the target instance immediately knows the title and metadata.
+ * Updates createdAt and lastPromptAt to transferTime so the session is ordered at the top.
  */
-export function syncProjectionCache(sourceDshHome, targetDshHome, sourceSessionId, targetSessionId) {
+export function syncProjectionCache(sourceDshHome, targetDshHome, sourceSessionId, targetSessionId, transferTime = Date.now()) {
   const srcFile = join(sourceDshHome, 'storages', 'session_projcache', 'sessions', `${sourceSessionId}.json`)
   if (!existsSync(srcFile)) return false
 
@@ -150,6 +154,18 @@ export function syncProjectionCache(sourceDshHome, targetDshHome, sourceSessionI
   let content = readFileSync(srcFile, 'utf-8')
   if (sourceSessionId !== targetSessionId) {
     content = content.replaceAll(sourceSessionId, targetSessionId)
+  }
+  try {
+    const obj = JSON.parse(content)
+    if (obj?.record?.identity) {
+      obj.record.identity.createdAt = transferTime
+    }
+    if (obj?.record?.rows?.sessionListMetadata?.val) {
+      obj.record.rows.sessionListMetadata.val.lastPromptAt = transferTime
+    }
+    content = JSON.stringify(obj, null, 2)
+  } catch (err) {
+    console.warn('[dsh-session-navigator] syncProjectionCache JSON parse warning:', err)
   }
   writeFileSync(tgtFile, content)
   return true
@@ -165,12 +181,57 @@ export function getLaunchToken(dshHome) {
     : join(dshHome, 'dsh-web-3080.log')
   if (!existsSync(logFile)) return null
   try {
-    const content = readFileSync(logFile, 'utf-8')
+    const stat = statSync(logFile)
+    const readSize = Math.min(stat.size, 65536)
+    const buffer = Buffer.alloc(readSize)
+    const fd = openSync(logFile, 'r')
+    readSync(fd, buffer, 0, readSize, Math.max(0, stat.size - readSize))
+    closeSync(fd)
+    const content = buffer.toString('utf-8')
     const matches = [...content.matchAll(/dsh web: https?:\/\/[^\s]+\?token=([A-Za-z0-9_-]+)/g)]
     if (matches.length === 0) return null
     return matches[matches.length - 1][1]
   } catch {
     return null
+  }
+}
+
+/**
+ * Notify a running target DSH instance about an incoming transferred session.
+ * `activate` tells the target whether it should also switch its window to the
+ * session: the desktop app must (it has no external deep link), while a web tab
+ * only refreshes its list because the caller opens the session in its own tab.
+ */
+export async function notifyTargetInstance(targetPort, sessionId, cwd = '') {
+  try {
+    const res = await fetch(`http://127.0.0.1:${targetPort}/dsh-session-navigator/notify-incoming`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId, cwd }),
+      signal: AbortSignal.timeout(1500),
+    })
+    if (!res.ok) return { ok: false, watching: false, attached: false }
+    const data = await res.json().catch(() => null)
+    return { ok: true, watching: data?.watching === true, attached: data?.attached === true }
+  } catch {
+    return { ok: false, watching: false, attached: false }
+  }
+}
+
+/**
+ * Activate JackDSH macOS desktop application if target is JackDSH.
+ */
+export function activateJackDshApp() {
+  if (platform() !== 'darwin') return false
+  try {
+    const child = spawn('osascript', ['-e', 'tell application "JackDSH" to activate'], {
+      detached: true,
+      stdio: 'ignore',
+    })
+    child.unref()
+    return true
+  } catch {
+    return false
   }
 }
 
@@ -182,9 +243,10 @@ export function getLaunchToken(dshHome) {
  * @param {string} [options.targetDshHome] - target instance data root (defaults to peer)
  * @param {string} options.sessionId - session UUID to transfer
  * @param {number} [options.targetPort] - port of the target web server
- * @returns {object} { ok, sourceSessionId, targetSessionId, targetPort, targetUrl, attachmentsCopied }
+ * @returns {Promise<object>} { ok, sourceSessionId, targetSessionId, targetPort, targetUrl,
+ *   isDesktopTarget, notified, watching, deliverInBrowser, workspace, attachmentsCopied }
  */
-export function transferSession({ sourceDshHome, targetDshHome, sessionId, targetPort }) {
+export async function transferSession({ sourceDshHome, targetDshHome, sessionId, targetPort }) {
   const normId = normalizeSessionId(sessionId)
   if (!normId) {
     throw new Error('invalid session id')
@@ -194,6 +256,8 @@ export function transferSession({ sourceDshHome, targetDshHome, sessionId, targe
   const peer = getPeerConfig(srcHome)
   const tgtHome = resolveDshHome(targetDshHome || peer.targetDshHome)
   const port = targetPort || peer.targetPort
+
+  const transferTime = Date.now()
 
   const sessionLoc = findSessionDirectory(srcHome, normId)
   if (!sessionLoc) {
@@ -237,33 +301,40 @@ export function transferSession({ sourceDshHome, targetDshHome, sessionId, targe
   const targetFilename = header.version && header.version >= 4 ? 'session.v4.jsonl.zstd' : `session.v${header.version || 3}.jsonl.zstd`
   const targetLogFile = join(targetSessionDir, targetFilename)
 
-  if (!hasConflict) {
-    // If no conflict, copy the exact source multi-frame zstd artifact to preserve pristine framing
-    copyFileSync(sessionLoc.sessionFile, targetLogFile)
-  } else {
-    // When conflict occurs, DSH Zstandard parser requires that Frame 1 contains EXACTLY one header line.
-    // Frame 2 and beyond contain the subsequent events.
-    header.id = finalSessionId
-    lines[0] = JSON.stringify(header)
-    const headerPayload = Buffer.from(lines[0] + '\n', 'utf-8')
-    const bodyPayload = Buffer.from(lines.slice(1).join('\n') + '\n', 'utf-8')
+  // Always rewrite Frame 1 (header) with transferTime so DSH calculates updatedAt as latest,
+  // placing the session strictly at the TOP of the session list in target instance.
+  const cleanLines = lines.map((l) => l.trim()).filter(Boolean)
+  header.id = finalSessionId
+  header.createdAt = transferTime
+  cleanLines[0] = JSON.stringify(header)
+  const headerPayload = Buffer.from(cleanLines[0] + '\n', 'utf-8')
+  const bodyPayload = cleanLines.length > 1 ? Buffer.from(cleanLines.slice(1).join('\n') + '\n', 'utf-8') : Buffer.alloc(0)
 
-    const headerFrame = execFileSync('zstd', ['-c'], {
-      input: headerPayload,
-      maxBuffer: MAX_ZSTD_BUFFER,
-    })
-    const bodyFrame = execFileSync('zstd', ['-c'], {
-      input: bodyPayload,
-      maxBuffer: MAX_ZSTD_BUFFER,
-    })
-    writeFileSync(targetLogFile, Buffer.concat([headerFrame, bodyFrame]))
-  }
+  const headerFrame = execFileSync('zstd', ['-c'], {
+    input: headerPayload,
+    maxBuffer: MAX_ZSTD_BUFFER,
+  })
+  const bodyFrame = execFileSync('zstd', ['-c'], {
+    input: bodyPayload,
+    maxBuffer: MAX_ZSTD_BUFFER,
+  })
+  writeFileSync(targetLogFile, Buffer.concat([headerFrame, bodyFrame]))
 
   // Sync attachments
   const attachmentsCopied = syncAttachments(srcHome, tgtHome, rawText)
 
-  // Sync projection cache
-  syncProjectionCache(srcHome, tgtHome, normId, finalSessionId)
+  // Sync projection cache with updated transferTime
+  syncProjectionCache(srcHome, tgtHome, normId, finalSessionId, transferTime)
+
+  const isDesktopTarget = tgtHome.includes('jackdsh/dsh-data')
+  // 目标实例在线就通知一声：它会把会话注册进对应工作区，并在有窗口正监听时自己切过去。
+  const notify = await notifyTargetInstance(port, finalSessionId, header.cwd || '')
+  if (isDesktopTarget) {
+    // 桌面端没有可用的外部深链入口，除通知外还要把 JackDSH 唤到前台。
+    activateJackDshApp()
+  }
+  // 网页端没有窗口在监听时才需要调用方开标签页兜底；否则交给目标端自己切换，避免两个窗口重复。
+  const deliverInBrowser = !isDesktopTarget && notify.watching !== true
 
   const targetToken = getLaunchToken(tgtHome)
   const targetUrl = targetToken
@@ -277,6 +348,10 @@ export function transferSession({ sourceDshHome, targetDshHome, sessionId, targe
     renamed: hasConflict,
     targetPort: port,
     targetUrl,
+    isDesktopTarget,
+    notified: notify.ok,
+    watching: notify.watching,
+    deliverInBrowser,
     workspace: sessionLoc.workspaceName,
     attachmentsCopied,
   }
